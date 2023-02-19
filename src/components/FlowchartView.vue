@@ -1,21 +1,31 @@
 <template>
   <div class="flowchart">
-      <InlineSvg :src="flowchartAsset" @loaded="initPanzoom($event)" />
+      <InlineSvg
+        :src="flowchartAsset"
+        @loaded="initPanzoom($event)"
+      />
   </div>
   <div class="controls">
-    <button @click="setSequenceIndex(currentSequenceIndex - 1)">←</button>
-    &nbsp; {{ computedCurrentSequenceIndex + 1 }} / {{ narrationSequence.length }} &nbsp;
-    <button @click="setSequenceIndex(currentSequenceIndex + 1)">→</button>
+    <template v-if="!explorationMode">
+      Narration Step {{ currentNarrationIndex + 1 }} of {{ narrationSequence.length }}
+    </template>
+    <template v-else>
+      <button @click="endExplorationMode()">Return to Narration</button>
+      &nbsp;
+      {{ currentExplorationId ?? 'Nothing' }} focused
+      &nbsp;
+      <button v-if="currentExplorationId" @click="resumeNarrationFromExplorationItem">Resume Narration Here</button>
+    </template>
   </div>
-  <video
-    ref="video"
+  <audio
+    ref="media"
     @play = "playbackActive = true"
     @pause = "playbackActive = false"
-    @timeupdate="playbackPosition = $refs.video.currentTime"
+    @timeupdate="playbackPosition = $refs.media.currentTime"
     controls
   >
     <source src="/narration.mp4" type="video/mp4" />
-  </video>
+  </audio>
 </template>
   
 <script>
@@ -33,6 +43,9 @@ export default {
 
   data() {
     return {
+      explorationMode: false,
+      currentExplorationId: undefined,
+
       flowchartAsset: '',
       flowchartElement: undefined,
       flowchartItems: {},
@@ -62,38 +75,59 @@ export default {
         ['n010', 300], ['e020-01', 300], ['e020-02', 300], ['e020-03', 300],
         ['n011', 300]
       ],
-      currentSequenceIndex: 0,
 
       playbackActive: false,
       playbackPosition: 0,
 
-      panzoomInstance: undefined
+      panzoomInstance: undefined,
+      panzoomPosition: {},
+
+      distanceToCurrentNarrationItem: 0
     }
   },
 
   computed: {
-    computedCurrentSequenceIndex() {
-      if (this.playbackActive) {
-        return Math.max(this.narrationSequence.findIndex(event => event[1] >= this.playbackPosition) - 1, 0);
+    // current index in narrationSequence based on media playback location
+    currentNarrationIndex() {
+      return Math.max(this.narrationSequence.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
+    },
+    // item object for current narration index
+    currentNarrationItem() {
+      return this.flowchartItemForSequenceIndex(this.currentNarrationIndex);
+    },
+    // item object for current exploration ID
+    currentExplorationItem() {
+      if (this.currentExplorationId) {
+        return this.flowchartItemForId(this.currentExplorationId);
       } else {
-        return this.currentSequenceIndex;
+        return undefined;
       }
     },
-    currentItem() {
-      return this.itemForSequenceIndex(this.computedCurrentSequenceIndex);
-    }
   },
 
   methods: {
+    // initialize panzoom instance
     initPanzoom(element) {
       this.panzoomInstance = panzoom(element, {
-        maxZoom: 1,
-        minZoom: 1
+        maxZoom: 2,
+        minZoom: 0.25
+      });
+
+      this.panzoomInstance.on('panstart', () => {
+        this.currentExplorationId = undefined;
+        this.startExplorationMode();
+      });
+
+      this.panzoomInstance.on('transform', () => {
+        this.panzoomPosition = this.panzoomInstance.getTransform();
+        this.updateNarrationVolume();
       });
 
       this.flowchartElement = element;
       this.collectFlowchartItems();
     },
+
+    // populate this.flowchartItems with nodes, edges and labels from svg source
     collectFlowchartItems() {
       const nodes = this.flowchartElement.querySelectorAll('[id^=n0]');
 
@@ -137,6 +171,7 @@ export default {
 
         const labelObject = {
           type: 'label',
+          index: labelIndex,
           parent: labelProperties[1].split('-')[1],
           element: labelElement
         };
@@ -149,15 +184,17 @@ export default {
       });
 
       this.addEventListeners();
-      this.setSequenceIndex(0, false);
     },
-    itemForSequenceIndex(index) {
-      const itemId = this.narrationSequence[index][0];
 
-      if (Array.from(itemId)[0] === 'n') {
-        return this.flowchartItems[itemId];
+    // return object from this.flowchartItems for item ID
+    //   NOTE: IDs in narration sequence omit label indexes if edge only has one label, therefore when this method is passed an edge ID from
+    //   the narration sequence, it should always return the edge's first label, whereas in other cases it should return the edge's object
+    //   (might be less convoluted if label IDs always include label index)
+    flowchartItemForId(id, fromNarrationSequence = false) {
+      if (Array.from(id)[0] === 'n' || (fromNarrationSequence === false && Array.from(id)[0] === 'e' && id.indexOf('-') === -1)) {
+        return this.flowchartItems[id];
       } else {
-        const edgeIdAndLabelIndex = itemId.split('-');
+        const edgeIdAndLabelIndex = id.split('-');
 
         if (edgeIdAndLabelIndex.length === 1) {
           edgeIdAndLabelIndex.push('01');
@@ -166,32 +203,45 @@ export default {
         return this.flowchartItems[edgeIdAndLabelIndex[0]].labels[edgeIdAndLabelIndex[1]];
       }
     },
+    // return object from this.flowchartItems for narration sequence index
+    flowchartItemForSequenceIndex(index) {
+      return this.flowchartItemForId(this.narrationSequence[index][0], true);
+    },
+
+    // return the timestamp of when an item ID last appears in the narration sequence
+    lastSequenceTimestampForId(id) {
+      let index = this.narrationSequence.findLastIndex(entry => entry[0] === id);
+      
+      if (index === -1) {
+        index = this.narrationSequence.findLastIndex(entry => entry[0] === id.split('-')[0]);
+      }
+
+      return this.narrationSequence[index][1];
+    },
+
+    // attach click listeners to flowchart items
     addEventListeners() {
       Object.entries(this.flowchartItems).forEach(([itemId, item]) => {
         if (item.type === 'edge') {
           Object.entries(item.labels).forEach(([labelIndex, label]) => {
             label.element.addEventListener('click', () => {
-              // TODO: performs two searches if label index omitted in narrationSequence, can be optimized
-              let targetIndex = this.narrationSequence.findLastIndex(entry => entry[0] === itemId + '-' + labelIndex);
-              if (targetIndex === -1) targetIndex = this.narrationSequence.findLastIndex(entry => entry[0] === itemId);
-
-              this.setSequenceIndex(targetIndex);
+              this.currentExplorationId = itemId + '-' + labelIndex;
+              this.startExplorationMode();
             });
           });
         } else {
           item.element.addEventListener('click', () => {
-            this.setSequenceIndex(this.narrationSequence.findLastIndex(entry => entry[0] === itemId));
+            this.currentExplorationId = itemId;
+            this.startExplorationMode();
           });
         }
       });
     },
-    setSequenceIndex(sequenceIndex, smoothTransition = true) {
-      sequenceIndex = Math.max(Math.min(sequenceIndex, this.narrationSequence.length - 1), 0);
 
-      this.currentSequenceIndex = sequenceIndex;
-
-      const method = smoothTransition ? 'smoothMoveTo' : 'moveTo';
-      const position = this.currentItem.element.getBBox();
+    // pan the flowchart to center on an item
+    moveToFlowchartItem(item) {
+      const method = /*smoothTransition ? */'smoothMoveTo'/* : 'moveTo'*/;
+      const position = item.element.getBBox();
 
       this.panzoomInstance[method](
         -(position.x + position.width / 2 - window.innerWidth / 2),
@@ -201,38 +251,124 @@ export default {
 
       this.updateFlowchartAppearance();
     },
+
+    // update classes/appearance of svg elements
     updateFlowchartAppearance() {
       this.flowchartElement.querySelectorAll('g').forEach(element => {
-        element.classList.remove('active', 'past', 'origin', 'destination');
+        element.classList.remove('narration-active', 'narration-past', 'exploration-active', 'exploration-next');
       });
 
-      this.currentItem.element.classList.add('active');
+      if (this.explorationMode && this.currentExplorationId) {
+        this.currentExplorationItem.element.classList.add('exploration-active');
 
-      if (this.currentItem.type === 'label') {
-        this.flowchartItems['e' + this.currentItem.parent].element.classList.add('active');
+        if (this.currentExplorationItem.type === 'label') {
+          this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
+
+          const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
+          const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index));
+          
+          nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
+            label.element.classList.add('exploration-next');
+          });
+
+          (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
+            this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+          });
+        } else {
+          const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
+          
+          destinationEdges.forEach(([edgeId, edge]) => {
+            console.log(edge);
+            edge.element.classList.add('exploration-next');
+
+            (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
+              this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+            });
+
+            Object.entries(edge.labels).forEach(([labelIndex, label]) => {
+              label.element.classList.add('exploration-next');
+            });
+          });
+        }
       }
 
-      // PROBLEM: edges without labels cannot get highlighted as past without entry in sequence
+      // if (this.playbackActive)
+      this.currentNarrationItem.element.classList.add('narration-active');
 
-      const pastSequence = this.narrationSequence.slice(0, this.computedCurrentSequenceIndex);
+      if (this.currentNarrationItem.type === 'label') {
+        this.flowchartItems['e' + this.currentNarrationItem.parent].element.classList.add('narration-past');
+      }
 
-      pastSequence.forEach((itemId, index) => {
-        const item = this.itemForSequenceIndex(index);
-        item.element.classList.add('past');
+      for (let index = 0; index < this.currentNarrationIndex; index++) {
+        const item = this.flowchartItemForSequenceIndex(index);
+        item.element.classList.add('narration-past');
 
         if (item.type === 'label') {
-          this.flowchartItems['e' + item.parent].element.classList.add('past');
+          this.flowchartItems['e' + item.parent].element.classList.add('narration-past');
         }
-      });
+      }
 
+      this.updateNarrationVolume();
+
+      // PROBLEM: edges without labels cannot get highlighted as past without entry in sequence
       // PROBLEM: only complete edge can be highlighted as destination, even when label within edge is active
+    },
+
+    // change the narration volume based on viewport proximity to current narration item
+    updateNarrationVolume() {
+      if (this.panzoomPosition.x) {
+        const currentNarrationItemBoundingBox = this.currentNarrationItem.element.getBBox();
+        const currentNarrationItemCoords = {
+          x: currentNarrationItemBoundingBox.x + currentNarrationItemBoundingBox.width / 2,
+          y: currentNarrationItemBoundingBox.y + currentNarrationItemBoundingBox.height / 2
+        };
+
+        this.distanceToCurrentNarrationItem = Math.hypot(
+          currentNarrationItemCoords.x + this.panzoomPosition.x - window.innerWidth / 2,
+          currentNarrationItemCoords.y + this.panzoomPosition.y - window.innerHeight / 2
+        );
+
+        this.$refs.media.volume = 1 - 0.8 * Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
+      }
+    },
+
+    startExplorationMode() {
+      this.explorationMode = true;
+      this.updateFlowchartAppearance();
+    },
+    endExplorationMode() {
+      this.explorationMode = false;
+      this.currentExplorationId = undefined;
+      this.moveToFlowchartItem(this.currentNarrationItem);
+    },
+    resumeNarrationFromExplorationItem() {
+      this.playbackPosition = this.lastSequenceTimestampForId(this.currentExplorationId);
+      this.$refs.media.currentTime = this.playbackPosition;
+      this.endExplorationMode();
+      this.$refs.media.play();
     }
   },
 
   watch: {
-    computedCurrentSequenceIndex: function() {
-      this.setSequenceIndex(this.computedCurrentSequenceIndex);
+    currentNarrationItem: function() {
+      if (!this.explorationMode) {
+        this.moveToFlowchartItem(this.currentNarrationItem);
+      } else {
+        this.updateFlowchartAppearance();
+      }
     },
+    currentExplorationItem: function() {
+      if (this.currentExplorationId) {
+        this.moveToFlowchartItem(this.currentExplorationItem);
+      }
+    },
+    playbackActive: function() {
+      if (this.playbackActive === true) {
+        this.endExplorationMode();
+      } else {
+        this.updateFlowchartAppearance();
+      }
+    }
     // playbackPosition: function() {
     //   console.log(this.playbackPosition);
     // }
@@ -278,11 +414,19 @@ export default {
       pointer-events: bounding-box;
     }
 
-    [id^=n0]:hover, [id^=l_]:hover, .active {
+    [id^=n0]:hover, [id^=l_]:hover, .narration-active, .exploration-active {
       opacity: 1;
     }
 
-    .active {
+    .exploration-active, .narration-active:not(.exploration-next) {
+      opacity: 1 !important;
+    }
+
+    .narration-past, .exploration-next {
+      opacity: 0.45;
+    }
+
+    .narration-active, .narration-past {
       *[stroke] {
         stroke: #f00;
       }
@@ -292,27 +436,11 @@ export default {
       }
 
       *[fill='#CCCCCC'] {
-        fill: #fcc
+        fill: #fcc;
       }
     }
 
-    .past {
-      *[stroke] {
-        stroke: #f00;
-      }
-
-      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: #f00;
-      }
-
-      *[fill='#CCCCCC'] {
-        fill: #fcc
-      }
-    }
-
-    .destination {
-      opacity: 0.3;
-
+    .exploration-active, .exploration-next {
       *[stroke] {
         stroke: #00f;
       }
@@ -322,32 +450,22 @@ export default {
       }
 
       *[fill='#CCCCCC'] {
-        fill: #ccf
+        fill: #ccf;
       }
     }
-
-    // .origin {
-    //   *[stroke] {
-    //     stroke: #f00;
-    //   }
-
-    //   *[fill]:not([fill="#CCCCCC"]):not([fill='white']) {
-    //     fill: #f00;
-    //   }
-    // }
   }
 }
 
 .controls {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  bottom: 78px;
+  left: 14px;
 }
 
-video {
+audio {
   position: absolute;
-  bottom: 48px;
+  bottom: 12px;
   left: 12px;
-  width: 320px;
+  width: 360px;
 }
 </style>
