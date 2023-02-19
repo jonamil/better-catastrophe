@@ -45,6 +45,7 @@ export default {
     return {
       explorationMode: false,
       currentExplorationId: undefined,
+      pastExplorationItems: [],
 
       flowchartAsset: '',
       flowchartElement: undefined,
@@ -255,41 +256,49 @@ export default {
     // update classes/appearance of svg elements
     updateFlowchartAppearance() {
       this.flowchartElement.querySelectorAll('g').forEach(element => {
-        element.classList.remove('narration-active', 'narration-past', 'exploration-active', 'exploration-next');
+        element.classList.remove('narration-active', 'narration-past', 'exploration-active', 'exploration-past', 'exploration-next');
       });
 
       if (this.explorationMode && this.currentExplorationId) {
         this.currentExplorationItem.element.classList.add('exploration-active');
 
-        if (this.currentExplorationItem.type === 'label') {
-          this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
+        // if (this.currentExplorationItem.type === 'label') {
+        //   this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
 
-          const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
-          const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index));
+        //   const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
+        //   const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index));
           
-          nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
-            label.element.classList.add('exploration-next');
-          });
+        //   nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
+        //     label.element.classList.add('exploration-next');
+        //   });
 
-          (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
-            this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-          });
-        } else {
-          const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
+        //   (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
+        //     this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+        //   });
+        // } else {
+        //   const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
           
-          destinationEdges.forEach(([edgeId, edge]) => {
-            console.log(edge);
-            edge.element.classList.add('exploration-next');
+        //   destinationEdges.forEach(([edgeId, edge]) => {
+        //     console.log(edge);
+        //     edge.element.classList.add('exploration-next');
 
-            (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
-              this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-            });
+        //     (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
+        //       this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+        //     });
 
-            Object.entries(edge.labels).forEach(([labelIndex, label]) => {
-              label.element.classList.add('exploration-next');
-            });
-          });
-        }
+        //     Object.entries(edge.labels).forEach(([labelIndex, label]) => {
+        //       label.element.classList.add('exploration-next');
+        //     });
+        //   });
+        // }
+
+        this.pastExplorationItems.forEach(item => {
+          item.element.classList.add('exploration-past');
+
+          if (item.type === 'label') {
+            this.flowchartItems['e' + item.parent].element.classList.add('exploration-past');
+          }
+        });
       }
 
       // if (this.playbackActive)
@@ -359,7 +368,13 @@ export default {
     },
     currentExplorationItem: function() {
       if (this.currentExplorationId) {
+        if (!this.pastExplorationItems.includes(this.currentExplorationItem)) {
+          this.pastExplorationItems.push(this.currentExplorationItem);
+        }
+
         this.moveToFlowchartItem(this.currentExplorationItem);
+      } else {
+        this.pastExplorationItems = [];
       }
     },
     playbackActive: function() {
@@ -418,11 +433,11 @@ export default {
       opacity: 1;
     }
 
-    .exploration-active, .narration-active:not(.exploration-next) {
+    .exploration-active, .narration-active:not(.exploration-past):not(.exploration-next) {
       opacity: 1 !important;
     }
 
-    .narration-past, .exploration-next {
+    .narration-past, .exploration-past, .exploration-next {
       opacity: 0.45;
     }
 
@@ -440,7 +455,7 @@ export default {
       }
     }
 
-    .exploration-active, .exploration-next {
+    .exploration-active, .exploration-past, .exploration-next {
       *[stroke] {
         stroke: #00f;
       }
