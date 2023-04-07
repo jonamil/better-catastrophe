@@ -5,6 +5,19 @@
         @loaded="initPanzoom($event)"
       />
   </div>
+  <img
+    ref="face"
+    src="@/assets/boyd.jpg"
+  />
+  <audio
+    ref="media"
+    @play = "playbackActive = true"
+    @pause = "playbackActive = false"
+    @timeupdate="playbackPosition = $refs.media.currentTime"
+    controls
+  >
+    <source src="/narration.mp4" type="video/mp4" />
+  </audio>
   <div class="controls">
     <template v-if="!explorationMode">
       Narration Step {{ currentNarrationIndex + 1 }} of {{ narrationSequence.length }}
@@ -17,15 +30,6 @@
       <button v-if="currentExplorationId" @click="resumeNarrationFromExplorationItem">Resume Narration Here</button>
     </template>
   </div>
-  <audio
-    ref="media"
-    @play = "playbackActive = true"
-    @pause = "playbackActive = false"
-    @timeupdate="playbackPosition = $refs.media.currentTime"
-    controls
-  >
-    <source src="/narration.mp4" type="video/mp4" />
-  </audio>
 </template>
   
 <script>
@@ -80,6 +84,15 @@ export default {
       playbackActive: false,
       playbackPosition: 0,
 
+      volumeAdjustment: {
+        duration: 250,
+        interval: undefined,
+        timeout: undefined,
+        start: 0,
+        from: 0,
+        to: 0
+      },
+
       panzoomInstance: undefined,
       panzoomPosition: {},
 
@@ -110,13 +123,18 @@ export default {
     // initialize panzoom instance
     initPanzoom(element) {
       this.panzoomInstance = panzoom(element, {
-        maxZoom: 2,
-        minZoom: 0.25
+        maxZoom: 1,
+        minZoom: 1
       });
 
       this.panzoomInstance.on('panstart', () => {
-        this.currentExplorationId = undefined;
+        // this.currentExplorationId = undefined;
         this.startExplorationMode();
+        this.$refs.face.classList.add('pan');
+      });
+
+      this.panzoomInstance.on('panend', () => {
+        this.$refs.face.classList.remove('pan');
       });
 
       this.panzoomInstance.on('transform', () => {
@@ -262,35 +280,35 @@ export default {
       if (this.explorationMode && this.currentExplorationId) {
         this.currentExplorationItem.element.classList.add('exploration-active');
 
-        // if (this.currentExplorationItem.type === 'label') {
-        //   this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
+        if (this.currentExplorationItem.type === 'label') {
+          this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
 
-        //   const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
-        //   const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index));
+          const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
+          const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index)).sort((a, b) => a[0] - b[0]).slice(0, 1);
           
-        //   nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
-        //     label.element.classList.add('exploration-next');
-        //   });
+          nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
+            label.element.classList.add('exploration-next');
+          });
 
-        //   (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
-        //     this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-        //   });
-        // } else {
-        //   const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
+          (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
+            this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+          });
+        } else {
+          const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
           
-        //   destinationEdges.forEach(([edgeId, edge]) => {
-        //     console.log(edge);
-        //     edge.element.classList.add('exploration-next');
+          destinationEdges.forEach(([edgeId, edge]) => {
+            console.log(edge);
+            edge.element.classList.add('exploration-next');
 
-        //     (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
-        //       this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-        //     });
+            // (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
+            //   this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
+            // });
 
-        //     Object.entries(edge.labels).forEach(([labelIndex, label]) => {
-        //       label.element.classList.add('exploration-next');
-        //     });
-        //   });
-        // }
+            Object.entries(edge.labels).sort((a, b) => a[0] - b[0]).slice(0, 1).forEach(([labelIndex, label]) => {
+              label.element.classList.add('exploration-next');
+            });
+          });
+        }
 
         this.pastExplorationItems.forEach(item => {
           item.element.classList.add('exploration-past');
@@ -324,7 +342,7 @@ export default {
     },
 
     // change the narration volume based on viewport proximity to current narration item
-    updateNarrationVolume() {
+    updateNarrationVolume(smooth = false) {
       if (this.panzoomPosition.x) {
         const currentNarrationItemBoundingBox = this.currentNarrationItem.element.getBBox();
         const currentNarrationItemCoords = {
@@ -337,7 +355,34 @@ export default {
           currentNarrationItemCoords.y + this.panzoomPosition.y - window.innerHeight / 2
         );
 
-        this.$refs.media.volume = 1 - 0.8 * Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
+        clearInterval(this.volumeAdjustment.interval);
+        clearTimeout(this.volumeAdjustment.timeout);
+
+        if (smooth) {
+          this.volumeAdjustment.start = Date.now();
+          this.volumeAdjustment.from = this.$refs.media.volume;
+          this.volumeAdjustment.to = 1 - 0.8 * Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
+
+          this.volumeAdjustment.interval = setInterval(() => {
+            this.$refs.media.volume = this.volumeAdjustment.from + this.easeInOutCubic((Date.now() - this.volumeAdjustment.start) / this.volumeAdjustment.duration) * (this.volumeAdjustment.to - this.volumeAdjustment.from);
+          }, 10);
+
+          this.volumeAdjustment.timeout = setTimeout(() => {
+            clearInterval(this.volumeAdjustment.interval);
+          }, this.volumeAdjustment.duration);
+        } else {
+          let distanceMultiplier;
+
+          if (this.explorationMode) {
+            distanceMultiplier = Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
+          } else {
+            distanceMultiplier = 0;
+          }
+
+          this.$refs.media.volume = 1 - 0.8 * distanceMultiplier;
+          this.$refs.face.style.width = 160 - 80 * distanceMultiplier + 'px';
+          this.$refs.face.style.opacity = 1 - 0.4 * distanceMultiplier;
+        }
       }
     },
 
@@ -355,6 +400,10 @@ export default {
       this.$refs.media.currentTime = this.playbackPosition;
       this.endExplorationMode();
       this.$refs.media.play();
+    },
+
+    easeInOutCubic(x) {
+      return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     }
   },
 
@@ -412,13 +461,17 @@ export default {
     bottom: 0;
     left: 0;
     right: 0;
-    background: radial-gradient(rgba(255,255,255,0) 50%, rgba(255,255,255,0.9) 80%);
+    // background: radial-gradient(rgba(255,255,255,0) 50%, rgba(255,255,255,0.8) 80%);
     pointer-events: none;
   }
 
   svg {
     & > * > * > * {
-      opacity: 0.35;
+      opacity: 0;
+
+      &[id^=n0], &[id^=e0], &[id^=l_] {
+        opacity: 0.15;
+      }
     }
 
     [id^=n0]:hover, [id^=l_]:hover {
@@ -427,6 +480,25 @@ export default {
 
     [id^=l_] {
       pointer-events: bounding-box;
+
+      & * {
+        // fill: #ccc;
+      }
+
+      &:not([class^=exploration]):not([class^=narration]) {
+        opacity: 0.075;
+
+        filter: url('data:image/svg+xml,\
+          <svg xmlns="http://www.w3.org/2000/svg">\
+            <filter id="flood">\
+              <feMorphology operator="dilate" radius="50" in="sourceGraphic" result="DILATE" />\
+            </filter>\
+          </svg>#flood');
+      }
+    }
+
+    [id^=n0]:not([class^=exploration]):not([class^=narration]) * {
+      fill: transparent;
     }
 
     [id^=n0]:hover, [id^=l_]:hover, .narration-active, .exploration-active {
@@ -443,44 +515,89 @@ export default {
 
     .narration-active, .narration-past {
       *[stroke] {
-        stroke: #f00;
+        stroke: rgba(0, 126, 242, 1);
       }
 
       *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: #f00;
+        fill: rgba(0, 126, 242, 1);
       }
 
       *[fill='#CCCCCC'] {
-        fill: #fcc;
+        fill: rgba(0, 126, 242, 0.3);
+      }
+    }
+
+    .narration-active[id^=n0]:not(.exploration-past) {
+      * {
+        stroke: transparent;
+      }
+
+      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
+        fill: #fff;
+      }
+
+      *[fill='#CCCCCC'], *[fill='white'] {
+        fill: rgba(0, 126, 242, 1);
       }
     }
 
     .exploration-active, .exploration-past, .exploration-next {
       *[stroke] {
-        stroke: #00f;
+        stroke: rgba(241, 27, 130, 1);
       }
 
       *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: #00f;
+        fill: rgba(241, 27, 130, 1);
       }
 
       *[fill='#CCCCCC'] {
-        fill: #ccf;
+        fill: rgba(241, 27, 130, 0.3);
+      }
+    }
+
+    .exploration-active[id^=n0] {
+      * {
+        stroke: transparent;
+      }
+
+      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
+        fill: #fff;
+      }
+
+      *[fill='#CCCCCC'], *[fill='white'] {
+        fill: rgba(241, 27, 130, 1);
       }
     }
   }
 }
 
-.controls {
+img {
+  display: block;
   position: absolute;
-  bottom: 78px;
+  bottom: 108px;
   left: 14px;
+  width: 160px;
+  margin-bottom: 12px;
+  border-radius: 5px;
+
+  transition: all 0.25s ease-in-out;
+
+  &.pan {
+    transition: none;
+  }
 }
 
 audio {
   position: absolute;
-  bottom: 12px;
+  bottom: 52px;
   left: 12px;
-  width: 360px;
+  width: 280px;
+}
+
+.controls {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  line-height: 25px;
 }
 </style>
