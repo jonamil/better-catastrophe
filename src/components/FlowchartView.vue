@@ -4,31 +4,60 @@
         :src="flowchartAsset"
         @loaded="initPanzoom($event)"
       />
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter x="0.05" y="0.05" width="0.9" height="0.9" id="label-obscured">
+            <feFlood flood-color="rgba(0,0,0,0.5)"/>
+          </filter>
+          <!-- <filter x="-0.05" y="-0.05" width="1.1" height="1.1" id="label-next-hover">
+            <feFlood flood-color="rgba(241, 27, 130, 0.2)"/>
+            <feComposite in="SourceGraphic"/>
+          </filter> -->
+          <filter x="-0.05" y="-0.05" width="1.1" height="1.1" id="label-current">
+            <feFlood flood-color="rgba(241, 27, 130, 1)"/>
+            <feComposite in="SourceGraphic"/>
+          </filter>
+        </defs>
+      </svg>
+      <button
+        v-if="!playbackActive"
+        :style="`top: ${unpauseButtonPosition.y}px; left: ${unpauseButtonPosition.x}px`"
+        class="unpause"
+        @click="startPlayback(true)"
+      >
+        ▶️
+      </button>
+      <button
+        v-if="!playbackActive && currentNarrationNodeId !== currentNodeId"
+        :style="`top: ${jumpButtonPosition.y}px; left: ${jumpButtonPosition.x}px`"
+        class="jump"
+        @click="jumpNarrationToCurrentNode()"
+      >
+        ⤵️
+      </button>
   </div>
-  <img
-    ref="face"
-    src="@/assets/boyd.jpg"
-  />
   <audio
     ref="media"
-    @play = "playbackActive = true"
-    @pause = "playbackActive = false"
-    @timeupdate="playbackPosition = $refs.media.currentTime"
-    controls
+    @play = "startPlayback()"
+    @pause = "stopPlayback()"
+    @timeupdate="playbackPosition = $event.target.currentTime"
   >
     <source src="/narration.mp4" type="video/mp4" />
   </audio>
   <div class="controls">
-    <template v-if="!explorationMode">
-      Narration Step {{ currentNarrationIndex + 1 }} of {{ narrationSequence.length }}
-    </template>
-    <template v-else>
-      <button @click="endExplorationMode()">Return to Narration</button>
-      &nbsp;
-      {{ currentExplorationId ?? 'Nothing' }} focused
-      &nbsp;
-      <button v-if="currentExplorationId" @click="resumeNarrationFromExplorationItem">Resume Narration Here</button>
-    </template>
+    <button @click="togglePlayback()">
+      {{ playbackActive ? '⏸️' : '▶️' }}
+    </button>
+    <select @change="$event => jumpNarrationToChapter($event.target.value)">
+      <option
+        v-for="(chapter, index) in narrationChapters"
+        :key="index"
+        :value="index"
+        :selected="index === currentNarrationChapterIndex"
+      >
+        {{ index + 1 }}. {{ chapter.name }}
+      </option>
+    </select>
   </div>
 </template>
   
@@ -47,76 +76,129 @@ export default {
 
   data() {
     return {
-      explorationMode: false,
-      currentExplorationId: undefined,
-      pastExplorationItems: [],
-
       flowchartAsset: '',
       flowchartElement: undefined,
-      flowchartItems: {},
+      flowchartNodes: {},
 
-      narrationSequence: [
-        ['n001', 59.5], ['e002', 61.5],
-        ['n001', 62.9], ['e002', 63.9],
-        ['n001', 65.2], ['e004', 66],
-        ['n002', 68.1],
-        ['n003', 69.2], ['e007-01', 70.8], ['e007-02', 73.4], ['e007-03', 75.5], ['e007-04', 77.3],
-        ['n002', 79.2], ['e005', 80.3],
-        ['n001', 81.6], ['e008', 83.5],
-        ['n004', 85.6], ['e010', 86.5],
-        ['n004', 88.2], ['e010', 88.8],
-        ['n004', 89.6], ['e009', 90.8],
-        ['n005', 300],
-        ['n006', 300], ['e012', 300],
-        ['n006', 300],
-        ['n005', 300], ['e013-01', 300], ['e013-02', 300], ['e013-03', 300],
-        ['n008', 300],
-        ['n005', 300],
-        ['n007', 300], ['e014-01', 300], ['e014-02', 300], ['e014-01', 300], ['e014-03', 300], ['e014-04', 300],
-        ['n009', 300], ['e015', 300],
-        ['n009', 300],
-        ['n010', 300], ['e019', 300],
-        ['n008', 300], ['e018', 300],
-        ['n010', 300], ['e020-01', 300], ['e020-02', 300], ['e020-03', 300],
-        ['n011', 300]
+      currentNodeId: 'n001',
+      teasedItems: [],
+      revealedItems: [],
+
+      narrationChapters: [
+        {
+          name: 'Is climate change for real?',
+          start: 59.5
+        },
+        {
+          name: 'Are we fucked?',
+          start: 85.6
+        },
+        {
+          name: 'So… we’re all in this together?',
+          start: 206
+        },
+        {
+          name: 'Can we fix it?',
+          start: 250
+        }
+      ],
+
+      narrationTimestamps: [
+        // Is climate change for real?
+        ['n001', 59.5],
+        ['n002', 61.5],
+        ['n001', 62.9],
+        ['n002', 63.9],
+        ['n001', 65.2],
+        ['n004', 66],
+        ['n005', 68.1],
+        ['n007', 69.2],
+        ['n008', 70.8],
+        ['n009', 73.4],
+        ['n010', 75.5],
+        ['n011', 77.3],
+        ['n005', 79.2],
+        ['n006', 80.3],
+        ['n001', 81.6],
+        ['n012', 83.5],
+        // Are we fucked?
+        ['n013', 85.6],
+        ['n014', 86.5],
+        ['n013', 88.2],
+        ['n014', 88.8],
+        ['n013', 89.6],
+        ['n015', 90.8],
+        ['n016', 103],
+        ['n017', 110],
+        ['n022', 113],
+        ['n016', 115],
+        ['n023', 121],
+        ['n024', 125],
+        ['n025', 128.5],
+        ['n026', 132.6],
+        ['n027', 163],
+        ['n028', 174],
+        ['n029', 176],
+        ['n028', 179],
+        ['n030', 180],
+        ['n031', 182],
+        ['n032', 184.5],
+        ['n033', 189],
+        ['n032', 195],
+        ['n034', 206],
+        ['n035', 209],
+        ['n026', 211],
+        ['n034', 221],
+        ['n037', 233],
+        ['n038', 240],
+        ['n039', 242]
       ],
 
       playbackActive: false,
       playbackPosition: 0,
 
-      volumeAdjustment: {
-        duration: 250,
-        interval: undefined,
-        timeout: undefined,
-        start: 0,
-        from: 0,
-        to: 0
-      },
-
       panzoomInstance: undefined,
       panzoomPosition: {},
 
-      distanceToCurrentNarrationItem: 0
+      unpauseButtonPosition: {
+        x: 0,
+        y: 0
+      },
+      jumpButtonPosition: {
+        x: 0,
+        y: 0
+      }
     }
   },
 
-  computed: {
-    // current index in narrationSequence based on media playback location
-    currentNarrationIndex() {
-      return Math.max(this.narrationSequence.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
+  computed: { 
+    currentNode() {
+      return this.flowchartNodes[this.currentNodeId];
     },
-    // item object for current narration index
-    currentNarrationItem() {
-      return this.flowchartItemForSequenceIndex(this.currentNarrationIndex);
-    },
-    // item object for current exploration ID
-    currentExplorationItem() {
-      if (this.currentExplorationId) {
-        return this.flowchartItemForId(this.currentExplorationId);
+    currentNodeLabel() {
+      if (this.currentNode.label.length <= 32) {
+        return this.currentNode.label;
       } else {
-        return undefined;
+        const words = this.currentNode.label.substring(0, 32).split(' ');
+        words.pop();
+        return words.join(' ') + '…';
       }
     },
+    // current index in narrationTimestamps based on media playback location
+    currentNarrationNodeIndex() {  
+      return Math.max(this.narrationTimestamps.findIndex(node => node[1] > this.playbackPosition) - 1, 0);
+      // return this.narrationTimestamps.findLastIndex(node => node[1] <= this.playbackPosition);
+    },
+    // node for current narration index
+    currentNarrationNodeId() {
+      return this.narrationTimestamps[this.currentNarrationNodeIndex][0];
+    },
+    currentNarrationNode() {
+      return this.flowchartNodes[this.currentNarrationNodeId];
+    },
+    currentNarrationChapterIndex() {
+      return this.narrationChapters.findLastIndex(chapter => chapter.start <= this.playbackPosition);
+    }
   },
 
   methods: {
@@ -128,137 +210,87 @@ export default {
       });
 
       this.panzoomInstance.on('panstart', () => {
-        // this.currentExplorationId = undefined;
-        this.startExplorationMode();
-        this.$refs.face.classList.add('pan');
+        this.stopPlayback();
       });
 
       this.panzoomInstance.on('panend', () => {
-        this.$refs.face.classList.remove('pan');
       });
 
       this.panzoomInstance.on('transform', () => {
         this.panzoomPosition = this.panzoomInstance.getTransform();
-        this.updateNarrationVolume();
+        this.updateFloatingButtonPositions();
       });
 
       this.flowchartElement = element;
-      this.collectFlowchartItems();
+      this.collectFlowchartNodes();
     },
 
-    // populate this.flowchartItems with nodes, edges and labels from svg source
-    collectFlowchartItems() {
-      const nodes = this.flowchartElement.querySelectorAll('[id^=n0]');
+    // populate this.flowchartNodes with nodes and edges from svg source
+    collectFlowchartNodes() {
+      const nodes = this.flowchartElement.querySelectorAll('g[id^=n]');
 
       nodes.forEach(nodeElement => {
         const nodeProperties = nodeElement.id.split('_');
         const nodeId = nodeProperties[0];
         
-        this.flowchartItems[nodeId] = {
+        this.flowchartNodes[nodeId] = {
+          element: nodeElement,
           type: nodeProperties[1],
-          element: nodeElement
+          label: nodeElement.textContent.replaceAll('\n', ' ').trim(),
+          outgoing: [],
+          incoming: []
         };
       });
 
-      const edges = this.flowchartElement.querySelectorAll('[id^=e0]');
+      const edges = this.flowchartElement.querySelectorAll('g[id^=e_]');
 
       edges.forEach(edgeElement => {
-        let edgeProperties = edgeElement.id.split('_');
-        const edgeId = edgeProperties.shift();
+        const edgeProperties = edgeElement.id.split('_');
+        const edgeFrom = 'n' + edgeProperties[1].split('-')[1];
+        const edgeTo = 'n' + edgeProperties[2].split('-')[1];
 
-        const edgeObject = {
-          type: 'edge',
-          element: edgeElement,
-          labels: {}
-        }
-
-        edgeProperties = edgeProperties.map(property => property.split('-'));
-
-        edgeProperties.forEach(property => {
-          const propertyName = property.shift();
-          edgeObject[propertyName] = property.length > 1 ? property : property[0];
+        this.flowchartNodes[edgeFrom].outgoing.push({
+          edge: edgeElement,
+          node: this.flowchartNodes[edgeTo]
         });
 
-        this.flowchartItems[edgeId] = edgeObject;
+        this.flowchartNodes[edgeTo].incoming.push({
+          edge: edgeElement,
+          node: this.flowchartNodes[edgeFrom]
+        });
       });
 
-      const labels = this.flowchartElement.querySelectorAll('[id^=l_]');
-
-      labels.forEach(labelElement => {
-        const labelProperties = labelElement.id.split('_');
-        const labelIndex = labelProperties[2] ?? '01';
-
-        const labelObject = {
-          type: 'label',
-          index: labelIndex,
-          parent: labelProperties[1].split('-')[1],
-          element: labelElement
-        };
-
-        const parentEdge = this.flowchartItems['e' + labelObject.parent];
-
-        if (parentEdge) {
-          parentEdge.labels[labelIndex] = labelObject;
-        }
-      });
-
-      this.addEventListeners();
+      this.addClickListeners();
     },
 
-    // return object from this.flowchartItems for item ID
-    //   NOTE: IDs in narration sequence omit label indexes if edge only has one label, therefore when this method is passed an edge ID from
-    //   the narration sequence, it should always return the edge's first label, whereas in other cases it should return the edge's object
-    //   (might be less convoluted if label IDs always include label index)
-    flowchartItemForId(id, fromNarrationSequence = false) {
-      if (Array.from(id)[0] === 'n' || (fromNarrationSequence === false && Array.from(id)[0] === 'e' && id.indexOf('-') === -1)) {
-        return this.flowchartItems[id];
-      } else {
-        const edgeIdAndLabelIndex = id.split('-');
+    // attach click listeners to flowchart nodes
+    addClickListeners() {
+      const vueInstance = this;
 
-        if (edgeIdAndLabelIndex.length === 1) {
-          edgeIdAndLabelIndex.push('01');
-        }
-
-        return this.flowchartItems[edgeIdAndLabelIndex[0]].labels[edgeIdAndLabelIndex[1]];
+      Object.entries(this.flowchartNodes).forEach(([nodeId, node]) => {
+        node.element.addEventListener('click', function() {
+          if (this.classList.contains('revealed')) {
+            vueInstance.stopPlayback();
+            vueInstance.currentNodeId = nodeId;
+          }
+        });
+      });
+    },
+    
+    markItemAsRevealed(node) {
+      if (this.revealedItems.indexOf(node) === -1) {
+        this.revealedItems.push(node);
       }
     },
-    // return object from this.flowchartItems for narration sequence index
-    flowchartItemForSequenceIndex(index) {
-      return this.flowchartItemForId(this.narrationSequence[index][0], true);
-    },
 
-    // return the timestamp of when an item ID last appears in the narration sequence
-    lastSequenceTimestampForId(id) {
-      let index = this.narrationSequence.findLastIndex(entry => entry[0] === id);
-      
-      if (index === -1) {
-        index = this.narrationSequence.findLastIndex(entry => entry[0] === id.split('-')[0]);
+    markItemAsTeased(node) {
+      if (this.teasedItems.indexOf(node) === -1) {
+        this.teasedItems.push(node);
       }
-
-      return this.narrationSequence[index][1];
-    },
-
-    // attach click listeners to flowchart items
-    addEventListeners() {
-      Object.entries(this.flowchartItems).forEach(([itemId, item]) => {
-        if (item.type === 'edge') {
-          Object.entries(item.labels).forEach(([labelIndex, label]) => {
-            label.element.addEventListener('click', () => {
-              this.currentExplorationId = itemId + '-' + labelIndex;
-              this.startExplorationMode();
-            });
-          });
-        } else {
-          item.element.addEventListener('click', () => {
-            this.currentExplorationId = itemId;
-            this.startExplorationMode();
-          });
-        }
-      });
     },
 
     // pan the flowchart to center on an item
-    moveToFlowchartItem(item) {
+    moveToNode(item) {
       const method = /*smoothTransition ? */'smoothMoveTo'/* : 'moveTo'*/;
       const position = item.element.getBBox();
 
@@ -274,164 +306,91 @@ export default {
     // update classes/appearance of svg elements
     updateFlowchartAppearance() {
       this.flowchartElement.querySelectorAll('g').forEach(element => {
-        element.classList.remove('narration-active', 'narration-past', 'exploration-active', 'exploration-past', 'exploration-next');
+        element.classList.remove('current', 'next', 'revealed', 'teased');
       });
 
-      if (this.explorationMode && this.currentExplorationId) {
-        this.currentExplorationItem.element.classList.add('exploration-active');
+      this.currentNode.element.classList.add('current');
+      this.markItemAsRevealed(this.currentNode.element);
 
-        if (this.currentExplorationItem.type === 'label') {
-          this.flowchartItems['e' + this.currentExplorationItem.parent].element.classList.add('exploration-next');
+      this.currentNode.outgoing.forEach(item => {
+        item.edge.classList.add('next');
+        item.node.element.classList.add('next');
+        this.markItemAsRevealed(item.edge);
+        this.markItemAsRevealed(item.node.element);
 
-          const parentEdge = this.flowchartItemForId('e' + this.currentExplorationItem.parent);
-          const nextLabelsOfParentEgde = Object.entries(parentEdge.labels).filter(([labelIndex]) => Number(labelIndex) > Number(this.currentExplorationItem.index)).sort((a, b) => a[0] - b[0]).slice(0, 1);
-          
-          nextLabelsOfParentEgde.forEach(([labelIndex, label]) => {
-            label.element.classList.add('exploration-next');
-          });
-
-          (Array.isArray(parentEdge.to) ? parentEdge.to : [parentEdge.to]).forEach(nodeId => {
-            this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-          });
-        } else {
-          const destinationEdges = Object.entries(this.flowchartItems).filter(([itemId, item]) => Array.from(itemId)[0] === 'e' && item.from.includes(this.currentExplorationId.slice(1)));
-          
-          destinationEdges.forEach(([edgeId, edge]) => {
-            console.log(edge);
-            edge.element.classList.add('exploration-next');
-
-            // (Array.isArray(edge.to) ? edge.to : [edge.to]).forEach(nodeId => {
-            //   this.flowchartItemForId('n' + nodeId).element.classList.add('exploration-next');
-            // });
-
-            Object.entries(edge.labels).sort((a, b) => a[0] - b[0]).slice(0, 1).forEach(([labelIndex, label]) => {
-              label.element.classList.add('exploration-next');
-            });
-          });
-        }
-
-        this.pastExplorationItems.forEach(item => {
-          item.element.classList.add('exploration-past');
-
-          if (item.type === 'label') {
-            this.flowchartItems['e' + item.parent].element.classList.add('exploration-past');
-          }
+        item.node.outgoing.forEach(subsequentItem => {
+          this.markItemAsTeased(subsequentItem.edge);
+          this.markItemAsTeased(subsequentItem.node.element);
         });
-      }
+      });
 
-      // if (this.playbackActive)
-      this.currentNarrationItem.element.classList.add('narration-active');
+      this.revealedItems.forEach(node => {
+        node.classList.add('revealed');
+      });
 
-      if (this.currentNarrationItem.type === 'label') {
-        this.flowchartItems['e' + this.currentNarrationItem.parent].element.classList.add('narration-past');
-      }
-
-      for (let index = 0; index < this.currentNarrationIndex; index++) {
-        const item = this.flowchartItemForSequenceIndex(index);
-        item.element.classList.add('narration-past');
-
-        if (item.type === 'label') {
-          this.flowchartItems['e' + item.parent].element.classList.add('narration-past');
-        }
-      }
-
-      this.updateNarrationVolume();
-
-      // PROBLEM: edges without labels cannot get highlighted as past without entry in sequence
-      // PROBLEM: only complete edge can be highlighted as destination, even when label within edge is active
+      this.teasedItems.forEach(node => {
+        node.classList.add('teased');
+      });
     },
 
-    // change the narration volume based on viewport proximity to current narration item
-    updateNarrationVolume(smooth = false) {
-      if (this.panzoomPosition.x) {
-        const currentNarrationItemBoundingBox = this.currentNarrationItem.element.getBBox();
-        const currentNarrationItemCoords = {
-          x: currentNarrationItemBoundingBox.x + currentNarrationItemBoundingBox.width / 2,
-          y: currentNarrationItemBoundingBox.y + currentNarrationItemBoundingBox.height / 2
-        };
+    jumpNarrationToChapter(chapterIndex) {
+      this.$refs.media.currentTime = this.narrationChapters[chapterIndex].start;
+      this.startPlayback();
+    },
+    jumpNarrationToCurrentNode() {
+      const firstNodeTimestamp = this.narrationTimestamps.find(node => node[0] === this.currentNodeId)[1];
+      
+      this.$refs.media.currentTime = firstNodeTimestamp;
+      this.startPlayback();
+    },
 
-        this.distanceToCurrentNarrationItem = Math.hypot(
-          currentNarrationItemCoords.x + this.panzoomPosition.x - window.innerWidth / 2,
-          currentNarrationItemCoords.y + this.panzoomPosition.y - window.innerHeight / 2
-        );
-
-        clearInterval(this.volumeAdjustment.interval);
-        clearTimeout(this.volumeAdjustment.timeout);
-
-        if (smooth) {
-          this.volumeAdjustment.start = Date.now();
-          this.volumeAdjustment.from = this.$refs.media.volume;
-          this.volumeAdjustment.to = 1 - 0.8 * Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
-
-          this.volumeAdjustment.interval = setInterval(() => {
-            this.$refs.media.volume = this.volumeAdjustment.from + this.easeInOutCubic((Date.now() - this.volumeAdjustment.start) / this.volumeAdjustment.duration) * (this.volumeAdjustment.to - this.volumeAdjustment.from);
-          }, 10);
-
-          this.volumeAdjustment.timeout = setTimeout(() => {
-            clearInterval(this.volumeAdjustment.interval);
-          }, this.volumeAdjustment.duration);
-        } else {
-          let distanceMultiplier;
-
-          if (this.explorationMode) {
-            distanceMultiplier = Math.min(Math.floor(this.distanceToCurrentNarrationItem) / 400, 1);
-          } else {
-            distanceMultiplier = 0;
-          }
-
-          this.$refs.media.volume = 1 - 0.8 * distanceMultiplier;
-          this.$refs.face.style.width = 160 - 80 * distanceMultiplier + 'px';
-          this.$refs.face.style.opacity = 1 - 0.4 * distanceMultiplier;
-        }
+    startPlayback(forceRecenter = false) {
+      this.currentNodeId = this.currentNarrationNodeId;
+      if (forceRecenter) {
+        this.moveToNode(this.currentNode);
       }
-    },
 
-    startExplorationMode() {
-      this.explorationMode = true;
-      this.updateFlowchartAppearance();
-    },
-    endExplorationMode() {
-      this.explorationMode = false;
-      this.currentExplorationId = undefined;
-      this.moveToFlowchartItem(this.currentNarrationItem);
-    },
-    resumeNarrationFromExplorationItem() {
-      this.playbackPosition = this.lastSequenceTimestampForId(this.currentExplorationId);
-      this.$refs.media.currentTime = this.playbackPosition;
-      this.endExplorationMode();
       this.$refs.media.play();
+      this.playbackActive = true;
     },
 
-    easeInOutCubic(x) {
-      return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-    }
+    stopPlayback() {
+      this.$refs.media.pause();
+      this.playbackActive = false;
+    },
+
+    togglePlayback() {
+      if (this.playbackActive) {
+        this.stopPlayback();
+      } else {
+        this.startPlayback();
+      }
+    },
+
+    updateFloatingButtonPositions() {
+      const narrationNodePosition = this.currentNarrationNode.element.getBBox();
+      
+      this.unpauseButtonPosition = {
+        x: narrationNodePosition.x + narrationNodePosition.width / 2 + this.panzoomPosition.x - 14,
+        y: narrationNodePosition.y + this.panzoomPosition.y - 24
+      };
+
+      const nodePosition = this.currentNode.element.getBBox();
+      
+      this.jumpButtonPosition = {
+        x: nodePosition.x + nodePosition.width / 2 + this.panzoomPosition.x - 16,
+        y: nodePosition.y + this.panzoomPosition.y - 24
+      };
+    },
   },
 
   watch: {
-    currentNarrationItem: function() {
-      if (!this.explorationMode) {
-        this.moveToFlowchartItem(this.currentNarrationItem);
-      } else {
-        this.updateFlowchartAppearance();
-      }
+    currentNode: function() {
+      // problem: does not re-center upon playback start if currentNode starts the same
+      this.moveToNode(this.currentNode);
     },
-    currentExplorationItem: function() {
-      if (this.currentExplorationId) {
-        if (!this.pastExplorationItems.includes(this.currentExplorationItem)) {
-          this.pastExplorationItems.push(this.currentExplorationItem);
-        }
-
-        this.moveToFlowchartItem(this.currentExplorationItem);
-      } else {
-        this.pastExplorationItems = [];
-      }
-    },
-    playbackActive: function() {
-      if (this.playbackActive === true) {
-        this.endExplorationMode();
-      } else {
-        this.updateFlowchartAppearance();
-      }
+    currentNarrationNodeId: function() {
+      this.currentNodeId = this.currentNarrationNodeId;
     }
     // playbackPosition: function() {
     //   console.log(this.playbackPosition);
@@ -440,6 +399,10 @@ export default {
 
   mounted() {
     this.flowchartAsset = flowchartImport;
+
+    // temporary
+    this.$refs.media.currentTime = this.narrationChapters[0].start;
+    // this.playbackPosition = this.narrationChapters[0].start;
   }
 }
 </script>
@@ -466,124 +429,152 @@ export default {
   }
 
   svg {
-    & > * > * > * {
-      opacity: 0;
+    cursor: default;
 
-      &[id^=n0], &[id^=e0], &[id^=l_] {
+    // nodes
+    g[id^=n] {
+      opacity: 0;
+      // transform-box: fill-box;
+      // transform-origin: center;
+      transition: all 0.1s ease-in-out;
+
+      path:last-of-type {
+        stroke: rgba(0,0,0,0.75);
+      }
+
+      // // background shapes
+      // path {
+      //   fill: transparent;
+      // }
+
+      // // question nodes
+      // &[id$=question] {
+      //   path {
+      //     fill: rgba(0,0,0,0.2);
+      //   }
+      // }
+
+      // non-label text
+      &:not([id$=label]) {
+        text {
+          fill: transparent;
+        }
+      }
+
+      // label text
+      &[id$=label] {
+        text {
+          filter: url('#label-obscured');
+        }
+      }
+
+      // outlines/teasers visible
+      &.teased, &.revealed {
         opacity: 0.15;
       }
-    }
 
-    [id^=n0]:hover, [id^=l_]:hover {
-      cursor: pointer;
-    }
+      // text visible + interactive
+      &.revealed {
+        &:hover {
+          opacity: 0.75;
+          cursor: pointer;
+          // transform: scale(1.05);
+        }
 
-    [id^=l_] {
-      pointer-events: bounding-box;
-
-      & * {
-        // fill: #ccc;
+        text {
+          fill: initial;
+          filter: none;
+        }
       }
 
-      &:not([class^=exploration]):not([class^=narration]) {
-        opacity: 0.075;
+      // currently active + next options
+      &.current, &.next {
+        &:hover {
+          opacity: 1;
+        }
 
-        filter: url('data:image/svg+xml,\
-          <svg xmlns="http://www.w3.org/2000/svg">\
-            <filter id="flood">\
-              <feMorphology operator="dilate" radius="50" in="sourceGraphic" result="DILATE" />\
-            </filter>\
-          </svg>#flood');
-      }
-    }
+        path:last-of-type {
+          stroke: rgba(241, 27, 130, 1);
+        }
 
-    [id^=n0]:not([class^=exploration]):not([class^=narration]) * {
-      fill: transparent;
-    }
+        &[id$=question] {
+          path {
+            fill: rgba(241, 27, 130, 0.2);
+          }
+        }
 
-    [id^=n0]:hover, [id^=l_]:hover, .narration-active, .exploration-active {
-      opacity: 1;
-    }
-
-    .exploration-active, .narration-active:not(.exploration-past):not(.exploration-next) {
-      opacity: 1 !important;
-    }
-
-    .narration-past, .exploration-past, .exploration-next {
-      opacity: 0.45;
-    }
-
-    .narration-active, .narration-past {
-      *[stroke] {
-        stroke: rgba(0, 126, 242, 1);
+        text {
+          fill: rgba(241, 27, 130, 1);
+        }
       }
 
-      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: rgba(0, 126, 242, 1);
+      // only next options
+      &.next {
+        opacity: 0.75;
+
+        // &[id$=label] {
+        //   text:hover {
+        //     filter: url('#label-next-hover');
+        //   }
+        // }
       }
 
-      *[fill='#CCCCCC'] {
-        fill: rgba(0, 126, 242, 0.3);
-      }
-    }
+      // only currently active
+      &.current {
+        opacity: 1;
 
-    .narration-active[id^=n0]:not(.exploration-past) {
-      * {
-        stroke: transparent;
-      }
+        &:not([id$=label]) {
+          path {
+            fill: rgba(241, 27, 130, 1);
+          }
 
-      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: #fff;
-      }
+          text {
+            fill: #fff;
+          }
+        }
 
-      *[fill='#CCCCCC'], *[fill='white'] {
-        fill: rgba(0, 126, 242, 1);
-      }
-    }
-
-    .exploration-active, .exploration-past, .exploration-next {
-      *[stroke] {
-        stroke: rgba(241, 27, 130, 1);
-      }
-
-      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: rgba(241, 27, 130, 1);
-      }
-
-      *[fill='#CCCCCC'] {
-        fill: rgba(241, 27, 130, 0.3);
+        &[id$=label] {
+          text {
+            fill: #fff;
+            filter: url('#label-current');
+          }
+        }
       }
     }
 
-    .exploration-active[id^=n0] {
-      * {
-        stroke: transparent;
+    // edges
+    g[id^=e_] {
+      opacity: 0;
+      pointer-events: none;
+
+      path {
+        fill: rgba(0,0,0,0.75);
       }
 
-      *[fill]:not([fill='#CCCCCC']):not([fill='white']) {
-        fill: #fff;
+      &.teased, &.revealed {
+        opacity: 0.15;
       }
 
-      *[fill='#CCCCCC'], *[fill='white'] {
-        fill: rgba(241, 27, 130, 1);
+      &.next {
+        opacity: 0.5;
+
+        path {
+          fill: rgba(241, 27, 130, 1);
+        }
       }
     }
   }
-}
 
-img {
-  display: block;
-  position: absolute;
-  bottom: 108px;
-  left: 14px;
-  width: 160px;
-  margin-bottom: 12px;
-  border-radius: 5px;
-
-  transition: all 0.25s ease-in-out;
-
-  &.pan {
-    transition: none;
+  button {
+    position: absolute;
+    appearance: none;
+    top: 0;
+    left: 0;
+    padding: 0;
+    font-size: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
   }
 }
 
@@ -591,13 +582,24 @@ audio {
   position: absolute;
   bottom: 52px;
   left: 12px;
-  width: 280px;
+  width: 360px;
 }
 
 .controls {
   position: absolute;
-  bottom: 14px;
-  left: 14px;
+  bottom: 12px;
+  left: 16px;
   line-height: 25px;
+
+  button {
+    appearance: none;
+    margin-right: 12px;
+    padding: 0;
+    vertical-align: middle;
+    font-size: 28px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
 }
 </style>
