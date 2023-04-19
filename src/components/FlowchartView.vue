@@ -1,63 +1,48 @@
 <template>
   <div class="flowchart">
-      <InlineSvg
-        :src="flowchartAsset"
-        @loaded="initPanzoom($event)"
-      />
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter x="0.05" y="0.05" width="0.9" height="0.9" id="label-obscured">
-            <feFlood flood-color="rgba(0,0,0,0.5)"/>
-          </filter>
-          <!-- <filter x="-0.05" y="-0.05" width="1.1" height="1.1" id="label-next-hover">
-            <feFlood flood-color="rgba(241, 27, 130, 0.2)"/>
-            <feComposite in="SourceGraphic"/>
-          </filter> -->
-          <filter x="-0.05" y="-0.05" width="1.1" height="1.1" id="label-current">
-            <feFlood flood-color="rgba(241, 27, 130, 1)"/>
-            <feComposite in="SourceGraphic"/>
-          </filter>
-        </defs>
-      </svg>
-      <button
-        v-if="!playbackActive"
-        :style="`top: ${unpauseButtonPosition.y}px; left: ${unpauseButtonPosition.x}px`"
-        class="unpause"
-        @click="startPlayback(true)"
-      >
-        ▶️
-      </button>
-      <button
-        v-if="!playbackActive && currentNarrationNodeId !== currentNodeId"
-        :style="`top: ${jumpButtonPosition.y}px; left: ${jumpButtonPosition.x}px`"
-        class="jump"
-        @click="jumpNarrationToCurrentNode()"
-      >
-        ⤵️
-      </button>
+    <InlineSvg
+      :src="flowchartAsset"
+      @loaded="initPanzoom($event)"
+    />
+    <InlineSvg :src="filtersAsset" />
   </div>
-  <audio
-    ref="media"
-    @play = "startPlayback()"
-    @pause = "stopPlayback()"
-    @timeupdate="playbackPosition = $event.target.currentTime"
-  >
-    <source src="/narration.mp4" type="video/mp4" />
+  <audio ref="media" @timeupdate="playbackPosition = $event.target.currentTime">
+    <source src="/narration.mp3" type="audio/mp3" />
   </audio>
   <div class="controls">
-    <button @click="togglePlayback()">
-      {{ playbackActive ? '⏸️' : '▶️' }}
-    </button>
-    <select @change="$event => jumpNarrationToChapter($event.target.value)">
-      <option
-        v-for="(chapter, index) in narrationChapters"
-        :key="index"
-        :value="index"
-        :selected="index === currentNarrationChapterIndex"
-      >
-        {{ index + 1 }}. {{ chapter.name }}
-      </option>
-    </select>
+    <div class="narration" :class="{ playing: playbackActive, chapters: chapterListVisible }">
+      <button
+        class="playback"
+        :class="{ current: currentNodeId === currentNarrationNodeId }"
+        :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
+        @click="togglePlayback()"
+      />
+      <div class="current-chapter" @click="toggleChapterList()">
+        <span v-if="currentNarrationChapter">
+          {{ currentNarrationChapter.label }}
+        </span>
+      </div>
+      <ul ref="chapters" class="chapters">
+        <li
+          v-for="(chapter, index) in narrationChapters"
+          :key="index"
+          :class="[
+            chapter.type,
+            index === currentNarrationChapterIndex ? 'active' : '',
+            chapter.timestamp <= furthestVisitedTimestamp ? 'visited' : ''
+          ]"
+          @click="jumpNarrationToChapter(index, chapter.timestamp)"
+        >
+          <span>{{ chapter.label }} <!-- {{ chapter.repetition ? `(${chapter.repetition})` : '' }} --></span>
+        </li>
+      </ul>
+    </div>
+    <button
+      class="jump"
+      :class="{ available: jumpActionAvailable }"
+      title="Resume playback from selected item"
+      @click="jumpNarrationToCurrentNode()"
+    />
   </div>
 </template>
   
@@ -65,7 +50,8 @@
 import InlineSvg from 'vue-inline-svg';
 import panzoom from 'panzoom';
 
-import flowchartImport from '@/assets/flowchart.svg';
+import flowchartAsset from '@/assets/flowchart.svg';
+import filtersAsset from '@/assets/filters.svg';
 
 export default {
   name: 'FlowchartView',
@@ -76,32 +62,15 @@ export default {
 
   data() {
     return {
-      flowchartAsset: '',
+      flowchartAsset,
+      filtersAsset,
+      
       flowchartElement: undefined,
       flowchartNodes: {},
 
       currentNodeId: 'n001',
       teasedItems: [],
       revealedItems: [],
-
-      narrationChapters: [
-        {
-          name: 'Is climate change for real?',
-          start: 59.5
-        },
-        {
-          name: 'Are we fucked?',
-          start: 85.6
-        },
-        {
-          name: 'So… we’re all in this together?',
-          start: 206
-        },
-        {
-          name: 'Can we fix it?',
-          start: 250
-        }
-      ],
 
       narrationTimestamps: [
         // Is climate change for real?
@@ -153,51 +122,55 @@ export default {
         ['n038', 240],
         ['n039', 242]
       ],
+      narrationChapters: [],
+      chapterListVisible: false,
+      furthestVisitedTimestamp: 0,
 
       playbackActive: false,
       playbackPosition: 0,
 
       panzoomInstance: undefined,
-      panzoomPosition: {},
-
-      unpauseButtonPosition: {
-        x: 0,
-        y: 0
-      },
-      jumpButtonPosition: {
-        x: 0,
-        y: 0
-      }
+      panzoomPosition: {}
     }
   },
 
-  computed: { 
+  computed: {
+    // current node object
     currentNode() {
       return this.flowchartNodes[this.currentNodeId];
     },
-    currentNodeLabel() {
-      if (this.currentNode.label.length <= 32) {
-        return this.currentNode.label;
-      } else {
-        const words = this.currentNode.label.substring(0, 32).split(' ');
-        words.pop();
-        return words.join(' ') + '…';
-      }
-    },
-    // current index in narrationTimestamps based on media playback location
+    // current index in narrationTimestamps based on media playback position
     currentNarrationNodeIndex() {  
-      return Math.max(this.narrationTimestamps.findIndex(node => node[1] > this.playbackPosition) - 1, 0);
-      // return this.narrationTimestamps.findLastIndex(node => node[1] <= this.playbackPosition);
+      return Math.max(this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
+      // return this.narrationTimestamps.findLastIndex(event => event[1] <= this.playbackPosition);
     },
-    // node for current narration index
+    // current narration node ID
     currentNarrationNodeId() {
       return this.narrationTimestamps[this.currentNarrationNodeIndex][0];
     },
+    // current narration node object
     currentNarrationNode() {
       return this.flowchartNodes[this.currentNarrationNodeId];
     },
+    // current chapter index based on playback position
     currentNarrationChapterIndex() {
-      return this.narrationChapters.findLastIndex(chapter => chapter.start <= this.playbackPosition);
+      return this.narrationChapters.findLastIndex(chapter => chapter.timestamp <= this.playbackPosition);
+    },
+    // current chapter object
+    currentNarrationChapter() {
+      return this.narrationChapters[this.currentNarrationChapterIndex];
+    },
+    // determines whether jumpNarrationToCurrentNode() action can be triggered from current node
+    jumpActionAvailable() {
+      if (
+        !this.playbackActive
+        && this.currentNodeId !== this.currentNarrationNodeId && this.currentNodeId
+        && this.narrationTimestamps.findIndex(event => event[0] === this.currentNodeId) !== -1
+      ) {
+        return true;
+      } else {
+        return false;
+      }
     }
   },
 
@@ -211,21 +184,22 @@ export default {
 
       this.panzoomInstance.on('panstart', () => {
         this.stopPlayback();
+        this.toggleChapterList(true);
       });
 
       this.panzoomInstance.on('panend', () => {
+
       });
 
       this.panzoomInstance.on('transform', () => {
         this.panzoomPosition = this.panzoomInstance.getTransform();
-        this.updateFloatingButtonPositions();
       });
 
       this.flowchartElement = element;
       this.collectFlowchartNodes();
     },
 
-    // populate this.flowchartNodes with nodes and edges from svg source
+    // populate this.flowchartNodes with nodes from svg source
     collectFlowchartNodes() {
       const nodes = this.flowchartElement.querySelectorAll('g[id^=n]');
 
@@ -236,7 +210,7 @@ export default {
         this.flowchartNodes[nodeId] = {
           element: nodeElement,
           type: nodeProperties[1],
-          label: nodeElement.textContent.replaceAll('\n', ' ').trim(),
+          label: this.truncatedLabelFromTextContent(nodeElement.textContent),
           outgoing: [],
           incoming: []
         };
@@ -260,10 +234,55 @@ export default {
         });
       });
 
+      this.collectNarrationChapters();
+      this.updateFurthestVisitedTimestamp();
       this.addClickListeners();
+      this.setCurrentNodeId(this.currentNodeId);
     },
 
-    // attach click listeners to flowchart nodes
+    // populate this.narrationChapters with non-label nodes
+    collectNarrationChapters() {
+      const repeatingNodes = {};
+
+      this.narrationTimestamps.forEach(event => {
+        if (!(event[0] in repeatingNodes)) {
+          repeatingNodes[event[0]] = 0;
+        } else {
+          repeatingNodes[event[0]] = 1;
+        }
+      });
+
+      this.narrationTimestamps.forEach(event => {
+        const eventId = event[0];
+        const eventTimestamp = event[1];
+
+        const node = this.flowchartNodes[eventId];
+        const firstItemOrNoDirectRepetition = this.narrationChapters.length === 0 || this.narrationChapters[this.narrationChapters.length - 1].id !== eventId;
+        
+        if (node.type !== 'label' && firstItemOrNoDirectRepetition) {
+          let repetitionCounter = 0;
+
+          if (repeatingNodes[eventId] > 0) {
+            repetitionCounter = repeatingNodes[eventId];
+            repeatingNodes[eventId] += 1;
+          }
+
+          this.narrationChapters.push({
+            id: eventId,
+            element: node.element,
+            type: node.type === 'question' ? 'primary' : 'secondary',
+            label: node.label,
+            repetition: repetitionCounter,
+            timestamp: eventTimestamp,
+          })
+        }
+      });
+
+      // temporary: advance initial playback position
+      this.$refs.media.currentTime = this.narrationChapters[0].timestamp;
+    },
+
+    // attach click listeners to node elements
     addClickListeners() {
       const vueInstance = this;
 
@@ -271,22 +290,10 @@ export default {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
             vueInstance.stopPlayback();
-            vueInstance.currentNodeId = nodeId;
+            vueInstance.setCurrentNodeId(nodeId);
           }
         });
       });
-    },
-    
-    markItemAsRevealed(node) {
-      if (this.revealedItems.indexOf(node) === -1) {
-        this.revealedItems.push(node);
-      }
-    },
-
-    markItemAsTeased(node) {
-      if (this.teasedItems.indexOf(node) === -1) {
-        this.teasedItems.push(node);
-      }
     },
 
     // pan the flowchart to center on an item
@@ -301,6 +308,20 @@ export default {
       );
 
       this.updateFlowchartAppearance();
+    },
+
+    // add node element to revealedItems array
+    markItemAsRevealed(node) {
+      if (this.revealedItems.indexOf(node) === -1) {
+        this.revealedItems.push(node);
+      }
+    },
+
+    // add node element to teasedItems array
+    markItemAsTeased(node) {
+      if (this.teasedItems.indexOf(node) === -1) {
+        this.teasedItems.push(node);
+      }
     },
 
     // update classes/appearance of svg elements
@@ -333,81 +354,145 @@ export default {
       });
     },
 
-    jumpNarrationToChapter(chapterIndex) {
-      this.$refs.media.currentTime = this.narrationChapters[chapterIndex].start;
-      this.startPlayback();
-    },
-    jumpNarrationToCurrentNode() {
-      const firstNodeTimestamp = this.narrationTimestamps.find(node => node[0] === this.currentNodeId)[1];
-      
-      this.$refs.media.currentTime = firstNodeTimestamp;
-      this.startPlayback();
+    // update furthestVisitedTimestamp which tracks furthest discovered timestamp within narration
+    updateFurthestVisitedTimestamp() {
+      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
+
+      nodeOccurrencesInNarration.every(event => {
+        if (event[1] <= this.furthestVisitedTimestamp) {
+          return true;
+        } else {
+          this.furthestVisitedTimestamp = event[1];
+          return false;
+        }
+      });
     },
 
-    startPlayback(forceRecenter = false) {
-      this.currentNodeId = this.currentNarrationNodeId;
-      if (forceRecenter) {
-        this.moveToNode(this.currentNode);
+    // jump playback position to chapter
+    jumpNarrationToChapter(chapterIndex, chapterTimestamp) {
+      if (chapterTimestamp <= this.furthestVisitedTimestamp) {
+        this.$refs.media.currentTime = this.narrationChapters[chapterIndex].timestamp;
+
+        // if node of selected chapter is the same as the current narration node, this will not trigger
+        // currentNarrationNodeId watcher -> therefore start playback manually
+        if (this.narrationChapters[chapterIndex].id === this.currentNarrationNodeId) {
+          this.startPlayback();
+        }
+      }
+    },
+
+    // jump playback position to current node
+    jumpNarrationToCurrentNode() {
+      // first node occurrence? or logic like updateFurthestVisitedTimestamp?
+      const firstNodeOccurrence = this.narrationTimestamps.find(event => event[0] === this.currentNodeId);
+
+      if (firstNodeOccurrence) {
+        this.$refs.media.currentTime = firstNodeOccurrence[1];
+      }
+
+      // const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
+
+      // nodeOccurrencesInNarration.every(event => {
+      //   if (event[1] <= this.furthestVisitedTimestamp) {
+      //     return true;
+      //   } else {
+      //     this.$refs.media.currentTime = event[1];
+      //     this.startPlayback();
+      //     return false;
+      //   }
+      // });
+    },
+
+    setCurrentNodeId(nodeId) {
+      this.currentNodeId = nodeId;
+
+      this.moveToNode(this.currentNode);
+      this.updateFurthestVisitedTimestamp();
+      this.toggleChapterList(true);
+    },
+
+    // start playback
+    startPlayback(nodeIdAlreadySet = false) {
+      if (!nodeIdAlreadySet) {
+        this.setCurrentNodeId(this.currentNarrationNodeId);
       }
 
       this.$refs.media.play();
       this.playbackActive = true;
+
+      this.toggleChapterList(true);
     },
 
+    // stop playback
     stopPlayback() {
       this.$refs.media.pause();
       this.playbackActive = false;
     },
 
+    // toggle playback
     togglePlayback() {
-      if (this.playbackActive) {
-        this.stopPlayback();
+      this.playbackActive ? this.stopPlayback() : this.startPlayback();
+    },
+
+    // toggle visibility of chapter list
+    toggleChapterList(forceClose = false) {
+      if (forceClose || this.chapterListVisible) {
+        this.chapterListVisible = false;
       } else {
-        this.startPlayback();
+        this.$refs.chapters.querySelector('li.active').scrollIntoView({
+          behavior: 'instant',
+          block: 'center'
+        });
+
+        this.chapterListVisible = true;
       }
     },
 
-    updateFloatingButtonPositions() {
-      const narrationNodePosition = this.currentNarrationNode.element.getBBox();
-      
-      this.unpauseButtonPosition = {
-        x: narrationNodePosition.x + narrationNodePosition.width / 2 + this.panzoomPosition.x - 14,
-        y: narrationNodePosition.y + this.panzoomPosition.y - 24
-      };
+    // create trimmed and truncated label from textContent of node element
+    truncatedLabelFromTextContent(label) {
+      label = label.replaceAll('\n', ' ').trim();
 
-      const nodePosition = this.currentNode.element.getBBox();
-      
-      this.jumpButtonPosition = {
-        x: nodePosition.x + nodePosition.width / 2 + this.panzoomPosition.x - 16,
-        y: nodePosition.y + this.panzoomPosition.y - 24
-      };
-    },
+      if (label.length <= 32) {
+        return label;
+      } else {
+        const words = label.substring(0, 32).split(' ');
+        words.pop();
+        return words.join(' ') + '…';
+      }
+    }
   },
 
   watch: {
-    currentNode: function() {
-      // problem: does not re-center upon playback start if currentNode starts the same
-      this.moveToNode(this.currentNode);
-    },
+    // update current node ID upon change of narration node ID (which changes based on playback position)
     currentNarrationNodeId: function() {
-      this.currentNodeId = this.currentNarrationNodeId;
+      this.setCurrentNodeId(this.currentNarrationNodeId);
+
+      // start playback if not active already (happens when jumpNarrationToCurrentNode triggered)
+      if (!this.playbackActive) {
+        this.startPlayback(true);
+      }
     }
-    // playbackPosition: function() {
-    //   console.log(this.playbackPosition);
-    // }
   },
 
   mounted() {
-    this.flowchartAsset = flowchartImport;
-
-    // temporary
-    this.$refs.media.currentTime = this.narrationChapters[0].start;
-    // this.playbackPosition = this.narrationChapters[0].start;
+    // make spacebar trigger togglePlayback
+    document.addEventListener('keydown', event => {
+      if (event.key === ' ' || event.key === 'Space') {
+        this.togglePlayback();
+        event.preventDefault();
+      }
+    });
   }
 }
 </script>
 
 <style lang="scss">
+:root {
+  --accent-color: 241,27,130;
+  --transition-duration: 0.1s;
+  --transition-timing: ease-in-out;
+}
+
 .flowchart {
   position: absolute;
   top: 0;
@@ -415,18 +500,6 @@ export default {
   left: 0;
   right: 0;
   overflow: hidden;
-
-  &:after {
-    display: block;
-    position: absolute;
-    content: '';
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    // background: radial-gradient(rgba(255,255,255,0) 50%, rgba(255,255,255,0.8) 80%);
-    pointer-events: none;
-  }
 
   svg {
     cursor: default;
@@ -436,7 +509,7 @@ export default {
       opacity: 0;
       // transform-box: fill-box;
       // transform-origin: center;
-      transition: all 0.1s ease-in-out;
+      transition: all var(--transition-duration) var(--transition-timing);
 
       path:last-of-type {
         stroke: rgba(0,0,0,0.75);
@@ -494,17 +567,17 @@ export default {
         }
 
         path:last-of-type {
-          stroke: rgba(241, 27, 130, 1);
+          stroke: rgb(var(--accent-color));
         }
 
         &[id$=question] {
           path {
-            fill: rgba(241, 27, 130, 0.2);
+            fill: rgba(var(--accent-color), 0.2);
           }
         }
 
         text {
-          fill: rgba(241, 27, 130, 1);
+          fill: rgb(var(--accent-color));
         }
       }
 
@@ -525,7 +598,7 @@ export default {
 
         &:not([id$=label]) {
           path {
-            fill: rgba(241, 27, 130, 1);
+            fill: rgb(var(--accent-color));
           }
 
           text {
@@ -559,47 +632,177 @@ export default {
         opacity: 0.5;
 
         path {
-          fill: rgba(241, 27, 130, 1);
+          fill: rgb(var(--accent-color));
         }
       }
     }
   }
-
-  button {
-    position: absolute;
-    appearance: none;
-    top: 0;
-    left: 0;
-    padding: 0;
-    font-size: 28px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-  }
-}
-
-audio {
-  position: absolute;
-  bottom: 52px;
-  left: 12px;
-  width: 360px;
 }
 
 .controls {
   position: absolute;
-  bottom: 12px;
+  bottom: 16px;
   left: 16px;
-  line-height: 25px;
+  pointer-events: none;
+
+  > * {
+    pointer-events: all;
+  }
+
+  *::selection {
+    background: transparent;
+  }
 
   button {
-    appearance: none;
-    margin-right: 12px;
+    width: 64px;
+    height: 64px;
     padding: 0;
-    vertical-align: middle;
-    font-size: 28px;
+    appearance: none;
     border: none;
-    background: transparent;
+    border-radius: 100%;
+    background-size: 32px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: #333;
+    // background-color: rgba(0,0,0,0.75);
     cursor: pointer;
+    transition: background-color var(--transition-duration) var(--transition-timing);
+  }
+
+  .narration {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    width: 384px;
+    height: 64px;
+    border-radius: 32px;
+    background: #eaeaea;
+    // background: rgba(220,220,220,0.75);
+    // backdrop-filter: blur(10px);
+    transition: all var(--transition-duration) var(--transition-timing);
+
+    button.playback {
+      position: absolute;
+      bottom: 0;
+      background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjQwIDEyOHYwYy4wMSA1LjUyLTIuODggMTAuNjUtNy42IDEzLjUxTDg4LjMyIDIyOS42NXYwYy00Ljk1IDMuMDItMTEuMTUgMy4xNC0xNi4yLjN2MGMtNS4wMS0yLjgtOC4xMi04LjA5LTguMTItMTMuODJWMzkuODdoLS4wMDFjMC01Ljc0IDMuMTEtMTEuMDMgOC4xMi0xMy44MnYtLjAwMWM1LjA1LTIuODUgMTEuMjUtMi43MyAxNi4yLjNsMTQ0LjA4IDg4LjE0djBjNC43MiAyLjg1IDcuNjEgNy45OCA3LjYgMTMuNTFaIi8+PC9zdmc+');
+      z-index: 1;
+
+      &.current {
+        background-color: rgb(var(--accent-color));
+      }
+    }
+
+    .current-chapter {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      bottom: 0;
+      left: 32px;
+      width: 304px;
+      height: 64px;
+      padding-left: 48px;
+      background-size: 18px;
+      background-position: center right 20px;
+      background-repeat: no-repeat;
+      background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBkPSJNNTYuNDggMTY4LjQ4bDgwLTgwSDExOS41bDgwIDgwYzQuNjggNC42OCAxMi4yOCA0LjY4IDE2Ljk3IDAgNC42OC00LjY5IDQuNjgtMTIuMjkgMC0xNi45OGwtODAtODBjLTQuNjktNC42OS0xMi4yOS00LjY5LTE2Ljk4IDBsLTgwIDgwYy00LjY5IDQuNjgtNC42OSAxMi4yOCAwIDE2Ljk3IDQuNjggNC42OCAxMi4yOCA0LjY4IDE2Ljk3IDBaIi8+PC9zdmc+');
+      box-shadow: inset 0 1px 0 transparent;
+      transition: box-shadow var(--transition-duration) var(--transition-timing);
+      cursor: pointer;
+    }
+
+    ul.chapters {
+      position: absolute;
+      bottom: 64px;
+      overflow-y: auto;
+      width: 384px;
+      height: 272px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        padding: 8px 0 8px 80px;
+        cursor: default;
+
+        &.secondary {
+          // padding-left: 96px;
+          font-style: italic;
+          color: rgba(0,0,0,0.5);
+
+          &:before {
+            content: '—';
+            opacity: 0.25;
+            margin-right: 6px;
+          }
+        }
+
+        &.active {
+          background-size: 12px;
+          background-position: center left 26px;
+          background-repeat: no-repeat;
+          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLC4yNSkiIGQ9Ik0xMjggMjRhMTA0IDEwNCAwIDEgMCAwIDIwOCAxMDQgMTA0IDAgMSAwIDAtMjA4WiIvPjwvc3ZnPg==');
+          background-color: #f5f5f5;
+        }
+
+
+        &.visited {
+          cursor: pointer;
+        }
+
+        &.visited:hover {
+          background-color: #ddd;
+        }
+
+        &:first-child {
+          margin-top: 24px;
+        }
+
+        &:last-child {
+          margin-bottom: 24px;
+        }
+
+        &:not(.visited) span {
+          filter: url('#chapter-obscured');
+          opacity: 0.15;
+        }
+      }
+    }
+
+    &.playing {
+      width: 64px;
+
+      button.playback {
+        background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjE2IDQ4djE2MCAwYzAgOC44My03LjE3IDE2LTE2IDE2aC00MHYwYy04Ljg0IDAtMTYtNy4xNy0xNi0xNlY0OHYwYzAtOC44NCA3LjE2LTE2IDE2LTE2aDQwdjBjOC44MyAwIDE2IDcuMTYgMTYgMTZaTTk2IDMySDU2djBjLTguODQgMC0xNiA3LjE2LTE2IDE2djE2MCAwYzAgOC44MyA3LjE2IDE2IDE2IDE2aDQwdjBjOC44MyAwIDE2LTcuMTcgMTYtMTZWNDh2MGMwLTguODQtNy4xNy0xNi0xNi0xNloiLz48L3N2Zz4=');
+      }
+
+      .current-chapter {
+        // opacity: 0;
+      }
+    }
+
+    &:not(.playing).chapters {
+      height: 336px;
+
+      .current-chapter {
+        background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBkPSJNMTk5LjUxIDg3LjUxbC04MCA4MGgxNi45N2wtODAtODBjLTQuNjktNC42OS0xMi4yOS00LjY5LTE2Ljk4IDAgLTQuNjkgNC42OC00LjY5IDEyLjI4IDAgMTYuOTdsODAgODBjNC42OCA0LjY4IDEyLjI4IDQuNjggMTYuOTcgMGw4MC04MGM0LjY4LTQuNjkgNC42OC0xMi4yOSAwLTE2Ljk4IC00LjY5LTQuNjktMTIuMjktNC42OS0xNi45OCAwWiIvPjwvc3ZnPg==');
+        box-shadow: inset 0 1px 0 rgba(0,0,0,0.1);
+      }
+    }
+  }
+
+  button.jump {
+    position: relative;
+    visibility: hidden;
+    opacity: 0;
+    margin-left: 12px;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjA4IDQwdjE3NiAwYzAgNC40MS0zLjU5IDgtOCA4IC00LjQyIDAtOC0zLjU5LTgtOHYtNjkuMjNMNzIuNDMgMjIxLjU1aC0uMDAxYy03LjQ3IDQuNjgtMTcuMzEgMi40My0yMS45OS01LjAzIC0xLjU5LTIuNTItMi40My01LjQzLTIuNDUtOC40MVY0Ny44N3YwYy4wNC04LjgxIDcuMjEtMTUuOTIgMTYuMDItMTUuODggMi45Ny4wMSA1Ljg4Ljg2IDguNCAyLjQ0bDExOS41NyA3NC43OFYzOS45OHYwYzAtNC40MiAzLjU4LTggOC04IDQuNDEgMCA4IDMuNTggOCA4WiIvPjwvc3ZnPg==');
+    background-color: rgb(var(--accent-color));
+    transition: all var(--transition-duration) var(--transition-timing);
+
+    &.available {
+      visibility: visible;
+      opacity: 1;
+    }
   }
 }
 </style>
