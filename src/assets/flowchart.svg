@@ -245,10 +245,7 @@
 <g id="n026_definition">
 <path id="Vector_26" d="M640 1036H936V1201H640V1036Z" fill="white"/>
 <path id="Vector_27" d="M669.4 1036.44H640V1200.71H669.4" stroke="black" stroke-width="2"/>
-<g id="Frontline&#194;&#160;communities experience &#226;&#128;&#156;first and worst&#226;&#128;&#157; the consequences of climate change. We&#226;&#128;&#153;re disproportionately low-income, of color, Indigenous, from the Global South, or labor in toxic conditions.">
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="734.062" y="1069.24">&#xa0;communities&#10;</tspan><tspan x="657" y="1087.24">experience &#x201c;first and worst&#x201d;&#10;</tspan><tspan x="657" y="1105.24">the consequences of climate&#10;</tspan><tspan x="657" y="1123.24">change. We&#x2019;re disproportionately&#10;</tspan><tspan x="657" y="1141.24">low-income, of color, Indigenous,&#10;</tspan><tspan x="657" y="1159.24">from the Global South, or labor&#10;</tspan><tspan x="657" y="1177.24">in toxic conditions.</tspan></text>
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="657" y="1069.24">Frontline</tspan></text>
-</g>
+<text id="Frontline&#194;&#160;communities experience &#226;&#128;&#156;first and worst&#226;&#128;&#157; the consequences of climate change. We&#226;&#128;&#153;re disproportionately low-income, of color, Indigenous, from the Global South, or labor in toxic conditions." fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="657" y="1069.24">Frontline&#xa0;communities&#10;</tspan><tspan x="657" y="1087.24">experience &#x201c;first and worst&#x201d;&#10;</tspan><tspan x="657" y="1105.24">the consequences of climate&#10;</tspan><tspan x="657" y="1123.24">change. We&#x2019;re disproportionately&#10;</tspan><tspan x="657" y="1141.24">low-income, of color, Indigenous,&#10;</tspan><tspan x="657" y="1159.24">from the Global South, or labor&#10;</tspan><tspan x="657" y="1177.24">in toxic conditions.</tspan></text>
 </g>
 <g id="e_from-017_to-026">
 <path id="Union_26" fill-rule="evenodd" clip-rule="evenodd" d="M758.397 726.6L758.4 726.6L758.48 725.22L756.4 725.7L756.36 726.5L756.387 726.501L756.19 730.02L755.49 737.52L753.49 751.9L745.17 797L719.16 932.13L714.86 963.27L713.06 982.39L712.38 995.37L712.28 1004.73L712.5 1011.73L712.9 1017.17L713.1 1018.67L713.277 1018.65L708.22 1019.86L718.4 1036.44L719.92 1017.06L715.055 1018.22L714.91 1016.97L714.51 1011.62L714.28 1004.69L714.38 995.42L715.05 982.52L716.85 963.48L721.12 932.44L747.15 797.38L755.48 752.21L757.48 737.75L758.2 730.17L758.397 726.6Z" fill="black"/>
@@ -260,7 +257,7 @@
 <text id="who?!" fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="575.289" y="1063.44">who?!</tspan></text>
 </g>
 <g id="e_from-024_to-025">
-<path id="Vector_28" d="M601 1047.98H599V981H581V979H601V1047.98Z" fill="black" stroke="black" stroke-width="0.05"/>
+<path id="Vector_28" d="M601 1047.98H599V981H581V979H601V1047.98Z" fill="black"/>
 </g>
 <g id="n024_label">
 <text id="the apocalypse is going to happen to someone else" fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="520.303" y="917.443">the&#10;</tspan><tspan x="487.265" y="935.443">apocalypse&#10;</tspan><tspan x="491.756" y="953.443">is going to&#10;</tspan><tspan x="492.749" y="971.443">happen to&#10;</tspan><tspan x="495.781" y="989.443">someone&#10;</tspan><tspan x="516.304" y="1007.44">else</tspan></text>
@@ -313,20 +310,14 @@
 </g>
 <g id="n017_thought">
 <path id="Vector_33" d="M660 660H854.88V730.57C822.34 718.77 802.08 718.77 789.78 718.77C770.3 718.77 744.38 730.57 724.9 730.57C712.8 730.57 692.35 730.57 660 718.77V660Z" fill="white" stroke="black" stroke-width="2"/>
-<g id="The apocalypse is already happening (to me)!">
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="684.729" y="678.444">The apocalypse is&#10;</tspan><tspan x="683.2" y="696.444">already happening&#10;</tspan><tspan x="725.792" y="714.444">(to </tspan><tspan x="777.858" y="714.444">)!</tspan></text>
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="751.825" y="714.444">me</tspan></text>
-</g>
+<text id="The apocalypse is already happening (to me)!" fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="684.729" y="678.444">The apocalypse is&#10;</tspan><tspan x="683.2" y="696.444">already happening&#10;</tspan><tspan x="726.302" y="714.444">(to me)!</tspan></text>
 </g>
 <g id="e_from-015_to-017">
 <path id="Union_34" fill-rule="evenodd" clip-rule="evenodd" d="M648.725 643.574L614.13 597.26H611.63L647.122 644.77L643.1 647.77L659 659L652.75 640.57L648.725 643.574Z" fill="black"/>
 </g>
 <g id="n016_thought">
 <path id="Vector_34" d="M440 660H634.88V730.57C602.34 718.77 582.08 718.77 569.78 718.77C550.3 718.77 524.38 730.57 504.9 730.57C492.8 730.57 472.35 730.57 440 718.77V660Z" fill="white" stroke="black" stroke-width="2"/>
-<g id="I&#226;&#128;&#153;m&#194;&#160;going to escape to a nice farm in Vermont with my friends&#226;&#128;&#166;">
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="475.213" y="678.444">&#xa0;going to escape to&#10;</tspan><tspan x="448.222" y="696.444">a nice farm in Vermont&#10;</tspan><tspan x="469.263" y="714.444">with my friends&#x2026;</tspan></text>
-<text fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" font-weight="bold" letter-spacing="0em"><tspan x="449.18" y="678.444">I&#x2019;m</tspan></text>
-</g>
+<text id="I&#226;&#128;&#153;m&#194;&#160;going to escape to a nice farm in Vermont with my friends&#226;&#128;&#166;" fill="black" xml:space="preserve" style="white-space: pre" font-family="Liberation Sans" font-size="18" letter-spacing="0em"><tspan x="450.19" y="678.444">I&#x2019;m&#xa0;going to escape to&#10;</tspan><tspan x="448.222" y="696.444">a nice farm in Vermont&#10;</tspan><tspan x="469.263" y="714.444">with my friends&#x2026;</tspan></text>
 </g>
 <g id="e_from-015_to-016">
 <path id="Union_35" fill-rule="evenodd" clip-rule="evenodd" d="M566.681 640.791L572.44 597.26H570.42L564.7 640.529L559.73 639.87L563.25 659L571.65 641.45L566.681 640.791Z" fill="black"/>

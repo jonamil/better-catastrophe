@@ -507,13 +507,11 @@ export default {
     // nodes
     g[id^=n] {
       opacity: 0;
-      // transform-box: fill-box;
-      // transform-origin: center;
       transition: all var(--transition-duration) var(--transition-timing);
 
-      path:last-of-type {
-        stroke: rgba(0,0,0,0.75);
-      }
+      // path:last-of-type {
+      //   stroke: rgba(0,0,0,0.75);
+      // }
 
       // // background shapes
       // path {
@@ -527,31 +525,39 @@ export default {
       //   }
       // }
 
-      // non-label text
+      // by default, hide text within non-label nodes
       &:not([id$=label]) {
         text {
           fill: transparent;
         }
       }
 
-      // label text
+      // by default, obscure text within label nodes
       &[id$=label] {
         text {
           filter: url('#label-obscured');
         }
       }
 
-      // outlines/teasers visible
-      &.teased, &.revealed {
-        opacity: 0.15;
+      // teased nodes (not yet revealed/interactive)
+      &.teased {
+        opacity: 0.125;
+        
+        &:not(.revealed) {
+          path:first-of-type {
+            fill: rgba(0,0,0,0.5);
+            stroke: transparent;
+          }
+        }
       }
 
-      // text visible + interactive
+      // revealed nodes (interactive and text visible)
       &.revealed {
+        opacity: 0.25;
+        
         &:hover {
           opacity: 0.75;
           cursor: pointer;
-          // transform: scale(1.05);
         }
 
         text {
@@ -560,8 +566,8 @@ export default {
         }
       }
 
-      // currently active + next options
-      &.current, &.next {
+      // next nodes and currently selected node
+      &.next, &.current {
         &:hover {
           opacity: 1;
         }
@@ -581,7 +587,7 @@ export default {
         }
       }
 
-      // only next options
+      // next nodes
       &.next {
         opacity: 0.75;
 
@@ -592,7 +598,7 @@ export default {
         // }
       }
 
-      // only currently active
+      // currently active node
       &.current {
         opacity: 1;
 
@@ -624,7 +630,11 @@ export default {
         fill: rgba(0,0,0,0.75);
       }
 
-      &.teased, &.revealed {
+      &.teased {
+        opacity: 0.15;
+      }
+
+      &.revealed {
         opacity: 0.15;
       }
 
@@ -664,7 +674,6 @@ export default {
     background-position: center;
     background-repeat: no-repeat;
     background-color: #333;
-    // background-color: rgba(0,0,0,0.75);
     cursor: pointer;
     transition: background-color var(--transition-duration) var(--transition-timing);
   }
@@ -676,9 +685,9 @@ export default {
     width: 384px;
     height: 64px;
     border-radius: 32px;
-    background: #eaeaea;
-    // background: rgba(220,220,220,0.75);
-    // backdrop-filter: blur(10px);
+    background: rgba(230,230,230,0.8);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 0 0 2px #fff;
     transition: all var(--transition-duration) var(--transition-timing);
 
     button.playback {
@@ -712,8 +721,8 @@ export default {
 
     ul.chapters {
       position: absolute;
-      bottom: 64px;
       overflow-y: auto;
+      bottom: 64px;
       width: 384px;
       height: 272px;
       margin: 0;
@@ -737,11 +746,12 @@ export default {
         }
 
         &.active {
+          color: #fff;
           background-size: 12px;
           background-position: center left 26px;
           background-repeat: no-repeat;
-          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLC4yNSkiIGQ9Ik0xMjggMjRhMTA0IDEwNCAwIDEgMCAwIDIwOCAxMDQgMTA0IDAgMSAwIDAtMjA4WiIvPjwvc3ZnPg==');
-          background-color: #f5f5f5;
+          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTI4IDI0YTEwNCAxMDQgMCAxIDAgMCAyMDggMTA0IDEwNCAwIDEgMCAwLTIwOFoiLz48L3N2Zz4=');
+          background-color: rgba(0,0,0,0.5);
         }
 
 
@@ -749,8 +759,13 @@ export default {
           cursor: pointer;
         }
 
-        &.visited:hover {
-          background-color: #ddd;
+        &.visited:hover:not(.active) {
+          background-color: rgba(0,0,0,0.075);
+        }
+
+        &:not(.visited) span {
+          filter: url('#chapter-obscured');
+          opacity: 0.125;
         }
 
         &:first-child {
@@ -760,11 +775,6 @@ export default {
         &:last-child {
           margin-bottom: 24px;
         }
-
-        &:not(.visited) span {
-          filter: url('#chapter-obscured');
-          opacity: 0.15;
-        }
       }
     }
 
@@ -773,10 +783,6 @@ export default {
 
       button.playback {
         background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjE2IDQ4djE2MCAwYzAgOC44My03LjE3IDE2LTE2IDE2aC00MHYwYy04Ljg0IDAtMTYtNy4xNy0xNi0xNlY0OHYwYzAtOC44NCA3LjE2LTE2IDE2LTE2aDQwdjBjOC44MyAwIDE2IDcuMTYgMTYgMTZaTTk2IDMySDU2djBjLTguODQgMC0xNiA3LjE2LTE2IDE2djE2MCAwYzAgOC44MyA3LjE2IDE2IDE2IDE2aDQwdjBjOC44MyAwIDE2LTcuMTcgMTYtMTZWNDh2MGMwLTguODQtNy4xNy0xNi0xNi0xNloiLz48L3N2Zz4=');
-      }
-
-      .current-chapter {
-        // opacity: 0;
       }
     }
 
@@ -797,6 +803,7 @@ export default {
     margin-left: 12px;
     background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjA4IDQwdjE3NiAwYzAgNC40MS0zLjU5IDgtOCA4IC00LjQyIDAtOC0zLjU5LTgtOHYtNjkuMjNMNzIuNDMgMjIxLjU1aC0uMDAxYy03LjQ3IDQuNjgtMTcuMzEgMi40My0yMS45OS01LjAzIC0xLjU5LTIuNTItMi40My01LjQzLTIuNDUtOC40MVY0Ny44N3YwYy4wNC04LjgxIDcuMjEtMTUuOTIgMTYuMDItMTUuODggMi45Ny4wMSA1Ljg4Ljg2IDguNCAyLjQ0bDExOS41NyA3NC43OFYzOS45OHYwYzAtNC40MiAzLjU4LTggOC04IDQuNDEgMCA4IDMuNTggOCA4WiIvPjwvc3ZnPg==');
     background-color: rgb(var(--accent-color));
+    box-shadow: 0 0 0 2px #fff;
     transition: all var(--transition-duration) var(--transition-timing);
 
     &.available {
