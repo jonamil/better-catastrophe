@@ -17,7 +17,11 @@
         :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
         @click="togglePlayback()"
       />
-      <div class="current-chapter" @click="toggleChapterList()">
+      <div
+        class="current-chapter"
+        :title="chapterListVisible ? 'Close narration log' : 'Open narration log'"
+        @click="toggleChapterList()"
+      >
         <span v-if="currentNarrationChapter">
           {{ currentNarrationChapter.label }}
         </span>
@@ -28,10 +32,11 @@
           :key="index"
           :class="[
             chapter.type,
+            revealedItems.indexOf(chapter.element) !== -1 ? 'revealed' : '',
             index === currentNarrationChapterIndex ? 'active' : '',
-            chapter.timestamp <= furthestVisitedTimestamp ? 'visited' : ''
+            listenedChapterIndexes.indexOf(index) !== -1 ? 'listened' : ''
           ]"
-          @click="jumpNarrationToChapter(index, chapter.timestamp)"
+          @click="revealedItems.indexOf(chapter.element) !== -1 && jumpNarrationToChapter(index)"
         >
           <span>{{ chapter.label }} <!-- {{ chapter.repetition ? `(${chapter.repetition})` : '' }} --></span>
         </li>
@@ -99,32 +104,33 @@ export default {
         ['n015', 90.8],
         ['n016', 103],
         ['n017', 110],
-        ['n022', 113],
+        ['n022', 112.6],
         ['n016', 115],
-        ['n023', 121],
-        ['n024', 125],
+        ['n023', 121.2],
+        ['n024', 125.2],
         ['n025', 128.5],
         ['n026', 132.6],
-        ['n027', 163],
+        ['n027', 162.6],
         ['n028', 174],
         ['n029', 176],
-        ['n028', 179],
+        ['n028', 178.8],
         ['n030', 180],
-        ['n031', 182],
+        ['n031', 181.8],
         ['n032', 184.5],
         ['n033', 189],
         ['n032', 195],
         ['n034', 206],
-        ['n035', 209],
+        ['n035', 208.2],
         ['n026', 211],
-        ['n034', 221],
+        ['n034', 220.8],
         ['n037', 233],
-        ['n038', 240],
-        ['n039', 242]
+        ['n038', 240]
       ],
+      listenedTimestampIndexes: [],
+
       narrationChapters: [],
+      listenedChapterIndexes: [],
       chapterListVisible: false,
-      furthestVisitedTimestamp: 0,
 
       playbackActive: false,
       playbackPosition: 0,
@@ -141,8 +147,18 @@ export default {
     },
     // current index in narrationTimestamps based on media playback position
     currentNarrationNodeIndex() {  
-      return Math.max(this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
-      // return this.narrationTimestamps.findLastIndex(event => event[1] <= this.playbackPosition);
+      // return Math.max(this.narrationTimestamps.findLastIndex(event => event[1] <= this.playbackPosition), 0);
+      // return Math.max(this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
+
+      const nextNarrationNodeIndex = this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition);
+
+      if (nextNarrationNodeIndex === -1) {
+        // no more narration events after playback position, thus return last index
+        return Math.max(this.narrationTimestamps.length - 1, 0);
+      } else {
+        // return the current index (subsequent index minus one)
+        return Math.max(nextNarrationNodeIndex - 1, 0);
+      }
     },
     // current narration node ID
     currentNarrationNodeId() {
@@ -154,7 +170,15 @@ export default {
     },
     // current chapter index based on playback position
     currentNarrationChapterIndex() {
-      return this.narrationChapters.findLastIndex(chapter => chapter.timestamp <= this.playbackPosition);
+      // return Math.max(this.narrationChapters.findIndex(chapter => chapter.timestamp > this.playbackPosition) - 1, 0);
+
+      const nextNarrationChapterIndex = this.narrationChapters.findIndex(chapter => chapter.timestamp > this.playbackPosition);
+
+      if (nextNarrationChapterIndex === -1) {
+        return Math.max(this.narrationChapters.length - 1, 0);
+      } else {
+        return Math.max(nextNarrationChapterIndex - 1, 0);
+      }
     },
     // current chapter object
     currentNarrationChapter() {
@@ -220,8 +244,8 @@ export default {
 
       edges.forEach(edgeElement => {
         const edgeProperties = edgeElement.id.split('_');
-        const edgeFrom = 'n' + edgeProperties[1].split('-')[1];
-        const edgeTo = 'n' + edgeProperties[2].split('-')[1];
+        const edgeFrom = 'n' + edgeProperties[1];
+        const edgeTo = 'n' + edgeProperties[2];
 
         this.flowchartNodes[edgeFrom].outgoing.push({
           edge: edgeElement,
@@ -235,7 +259,6 @@ export default {
       });
 
       this.collectNarrationChapters();
-      this.updateFurthestVisitedTimestamp();
       this.addClickListeners();
       this.setCurrentNodeId(this.currentNodeId);
     },
@@ -279,7 +302,7 @@ export default {
       });
 
       // temporary: advance initial playback position
-      this.$refs.media.currentTime = this.narrationChapters[0].timestamp;
+      this.$refs.media.currentTime = this.narrationTimestamps[0][1];
     },
 
     // attach click listeners to node elements
@@ -324,6 +347,20 @@ export default {
       }
     },
 
+    // add timestamp/event index to listenedTimestampIndexes array
+    markTimestampAsListened(index) {
+      if (this.listenedTimestampIndexes.indexOf(index) === -1) {
+        this.listenedTimestampIndexes.push(index);
+      }
+    },
+
+    // add chapter index to listenedChapterIndexes array
+    markChapterAsListened(index) {
+      if (this.listenedChapterIndexes.indexOf(index) === -1) {
+        this.listenedChapterIndexes.push(index);
+      }
+    },
+
     // update classes/appearance of svg elements
     updateFlowchartAppearance() {
       this.flowchartElement.querySelectorAll('g').forEach(element => {
@@ -354,60 +391,42 @@ export default {
       });
     },
 
-    // update furthestVisitedTimestamp which tracks furthest discovered timestamp within narration
-    updateFurthestVisitedTimestamp() {
-      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
-
-      nodeOccurrencesInNarration.every(event => {
-        if (event[1] <= this.furthestVisitedTimestamp) {
-          return true;
-        } else {
-          this.furthestVisitedTimestamp = event[1];
-          return false;
-        }
-      });
-    },
-
     // jump playback position to chapter
-    jumpNarrationToChapter(chapterIndex, chapterTimestamp) {
-      if (chapterTimestamp <= this.furthestVisitedTimestamp) {
-        this.$refs.media.currentTime = this.narrationChapters[chapterIndex].timestamp;
+    jumpNarrationToChapter(index) {
+      this.$refs.media.currentTime = this.narrationChapters[index].timestamp;
 
-        // if node of selected chapter is the same as the current narration node, this will not trigger
-        // currentNarrationNodeId watcher -> therefore start playback manually
-        if (this.narrationChapters[chapterIndex].id === this.currentNarrationNodeId) {
-          this.startPlayback();
-        }
+      // if node of selected chapter is the same as the current narration node, this will not trigger
+      // currentNarrationNodeId watcher -> therefore start playback manually
+      if (this.narrationChapters[index].id === this.currentNarrationNodeId) {
+        this.startPlayback();
       }
     },
 
     // jump playback position to current node
     jumpNarrationToCurrentNode() {
-      // first node occurrence? or logic like updateFurthestVisitedTimestamp?
-      const firstNodeOccurrence = this.narrationTimestamps.find(event => event[0] === this.currentNodeId);
+      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
 
-      if (firstNodeOccurrence) {
-        this.$refs.media.currentTime = firstNodeOccurrence[1];
+      let furthestNodeOccurrence = ['', 0];
+
+      const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
+        if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
+          this.$refs.media.currentTime = event[1];
+          return false;
+        } else {
+          furthestNodeOccurrence = event;
+          return true;
+        }
+      });
+
+      if (noUnlistenedOccurrences) {
+        this.$refs.media.currentTime = furthestNodeOccurrence[1];
       }
-
-      // const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
-
-      // nodeOccurrencesInNarration.every(event => {
-      //   if (event[1] <= this.furthestVisitedTimestamp) {
-      //     return true;
-      //   } else {
-      //     this.$refs.media.currentTime = event[1];
-      //     this.startPlayback();
-      //     return false;
-      //   }
-      // });
     },
 
     setCurrentNodeId(nodeId) {
       this.currentNodeId = nodeId;
 
       this.moveToNode(this.currentNode);
-      this.updateFurthestVisitedTimestamp();
       this.toggleChapterList(true);
     },
 
@@ -415,6 +434,11 @@ export default {
     startPlayback(nodeIdAlreadySet = false) {
       if (!nodeIdAlreadySet) {
         this.setCurrentNodeId(this.currentNarrationNodeId);
+      }
+
+      // mark first chapter as listened if playback was started right from the start
+      if (this.listenedChapterIndexes.length === 0) {
+        this.markChapterAsListened(this.currentNarrationChapterIndex);
       }
 
       this.$refs.media.play();
@@ -463,6 +487,11 @@ export default {
   },
 
   watch: {
+    // when the narration index changes, mark that timestamp/event as listened
+    currentNarrationNodeIndex: function() {
+      this.markTimestampAsListened(this.currentNarrationNodeIndex);
+    },
+
     // update current node ID upon change of narration node ID (which changes based on playback position)
     currentNarrationNodeId: function() {
       this.setCurrentNodeId(this.currentNarrationNodeId);
@@ -471,6 +500,11 @@ export default {
       if (!this.playbackActive) {
         this.startPlayback(true);
       }
+    },
+
+    // when the narration chapter index changes, mark that chapter as listened
+    currentNarrationChapterIndex: function() {
+      this.markChapterAsListened(this.currentNarrationChapterIndex);
     }
   },
 
@@ -641,7 +675,7 @@ export default {
       &.next {
         opacity: 0.5;
 
-        path {
+        path, text {
           fill: rgb(var(--accent-color));
         }
       }
@@ -656,6 +690,7 @@ export default {
   pointer-events: none;
 
   > * {
+    vertical-align: bottom;
     pointer-events: all;
   }
 
@@ -686,6 +721,7 @@ export default {
     height: 64px;
     border-radius: 32px;
     background: rgba(230,230,230,0.8);
+    -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     box-shadow: 0 0 0 2px #fff;
     transition: all var(--transition-duration) var(--transition-timing);
@@ -731,42 +767,55 @@ export default {
 
       li {
         padding: 8px 0 8px 80px;
+        font-weight: 650;
+        background-size: 10px;
+        background-position: center left 27px;
+        background-repeat: no-repeat;
         cursor: default;
 
         &.secondary {
           // padding-left: 96px;
-          font-style: italic;
-          color: rgba(0,0,0,0.5);
+          // font-style: italic;
+          // color: rgba(0,0,0,0.5);
 
           &:before {
             content: '—';
             opacity: 0.25;
             margin-right: 6px;
+            font-weight: normal;
           }
         }
 
-        &.active {
-          color: #fff;
-          background-size: 12px;
-          background-position: center left 26px;
-          background-repeat: no-repeat;
-          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTI4IDI0YTEwNCAxMDQgMCAxIDAgMCAyMDggMTA0IDEwNCAwIDEgMCAwLTIwOFoiLz48L3N2Zz4=');
-          background-color: rgba(0,0,0,0.5);
-        }
-
-
-        &.visited {
+        &.revealed {
           cursor: pointer;
         }
 
-        &.visited:hover:not(.active) {
+        &.revealed:hover:not(.active) {
           background-color: rgba(0,0,0,0.075);
         }
 
-        &:not(.visited) span {
+        &:not(.revealed) span {
           filter: url('#chapter-obscured');
-          opacity: 0.125;
+          opacity: 0.1;
         }
+
+        &.revealed:not(.listened):not(.active) {
+          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsMCwwLC4yKSIgZD0iTTEyOCAyNGExMDQgMTA0IDAgMSAwIDAgMjA4IDEwNCAxMDQgMCAxIDAgMC0yMDhaIi8+PC9zdmc+');
+        }
+
+        &.listened {
+          font-weight: normal;
+        }
+
+        &.active {
+          font-weight: normal;
+          color: #fff;
+          background-size: 18px;
+          background-position: center left 23px;
+          background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0iI0ZGRiI+PHBhdGggZD0iTTIgMTAuNTljMC0uNTYgMC0uODUuMS0xLjA2IC4wOS0uMTkuMjQtLjM1LjQzLS40NCAuMjEtLjExLjQ5LS4xMSAxLjA1LS4xMWgxLjczYy4yNCAwIC4zNiAwIC40OC0uMDMgLjEtLjAzLjE5LS4wNy4yOC0uMTIgLjEtLjA3LjE4LS4xNS4zNi0uMzNsMy4xNi0zLjE3Yy40Mi0uNDMuNjQtLjY1LjgyLS42NiAuMTUtLjAyLjMxLjA1LjQxLjE3IC4xMS4xNC4xMS40NC4xMSAxLjA0djEyLjEzYzAgLjYgMCAuOS0uMTIgMS4wNCAtLjExLjEyLS4yNi4xOC0uNDIuMTcgLS4xOS0uMDItLjQtLjIzLS44My0uNjZsLTMuMTctMy4xN2MtLjE4LS4xOC0uMjYtLjI2LS4zNy0uMzMgLS4wOS0uMDYtLjE5LS4xLS4yOS0uMTIgLS4xMi0uMDMtLjI0LS4wMy0uNDktLjAzSDMuNWMtLjU3IDAtLjg1IDAtMS4wNi0uMTEgLS4xOS0uMS0uMzUtLjI1LS40NC0uNDQgLS4xMS0uMjItLjExLS41LS4xMS0xLjA2di0yLjhaIi8+PHBhdGggZD0iTTMgMTAuNTljMC0uNSAwLS42MiAwLS42IC0uMDEgMC0uMDEgMC0uMDEgMCAtLjAyIDAgLjEtLjAxLjYtLjAxaDEuNzNjLjM5IDAgLjUtLjAxLjcxLS4wNiAuMi0uMDUuMzktLjEzLjU3LS4yNCAuMDUtLjA0LjA1LS4wNC4wOS0uMDcgLjEzLS4xLjItLjE3LjQ0LS40MWwzLjE2LTMuMTdjLjI2LS4yNy4zNi0uMzYuNDMtLjQzIC0uMDIgMC0uMDguMDQtLjI1LjA1IC0uMTYuMDEtLjMyLS4wNi0uNDItLjE4IC0uMTEtLjEzLS4xMy0uMi0uMTQtLjIyIDAgLjEuMDEuMjMuMDEuNjF2MTIuMTNjMCAuMzgtLjAxLjUtLjAyLjYxIDAtLjAyLjAyLS4wOS4xMy0uMjIgLjEtLjEzLjI1LS4xOS40MS0uMTggLjE2LjAxLjIzLjA0LjI0LjA1IC0uMDgtLjA3LS4xOC0uMTYtLjQ0LS40M2wtMy4xNy0zLjE3Yy0uMjktLjI5LS4zNy0uMzYtLjU1LS40NyAtLjE4LS4xMS0uMzgtLjItLjU4LS4yNCAtLjIxLS4wNi0uMzItLjA2LS43Mi0uMDZIMy40OGMtLjUgMC0uNjItLjAxLS42IDAgLS4wMS0uMDEtLjAxIDAtLjAxIDAgMCAuMDEtLjAxLS4xMS0uMDEtLjYxdi0yLjhabS0yIDB2Mi44YzAgLjkuMDEgMS4xMS4yMSAxLjUgLjE5LjM3LjQ5LjY4Ljg3Ljg3IC4zOS4yLjYuMjEgMS41LjIxaDEuNzNjLjIxIDAgLjI1IDAgLjI0LS4wMSAwIDAgMCAwIDAgMCAtLjAxLS4wMS4wMi4wMi4xNy4xN2wzLjE2IDMuMTZjLjgxLjgxLjkyLjkgMS40NS45NCAuNDcuMDMuOTQtLjE2IDEuMjUtLjUzIC4zNC0uNDEuMzUtLjU0LjM1LTEuN1Y1Ljg2YzAtMS4xNi0uMDItMS4zLS4zNi0xLjcgLS4zMi0uMzctLjc4LS41Ni0xLjI2LS41MyAtLjU0LjA0LS42NC4xMi0xLjQ2Ljk0TDUuNjggNy43M2MtLjE1LjE0LS4xOS4xNy0uMTkuMTggMC0uMDEgMC0uMDEuMDEtLjAxIC0uMDEgMC0uMDEgMC0uMDEgMCAwLS4wMS0uMDQtLjAxLS4yNS0uMDFIMy41Yy0uOTEgMC0xLjEyLjAxLTEuNTEuMjEgLS4zOC4xOS0uNjkuNDktLjg4Ljg3IC0uMjEuMzktLjIyLjYtLjIyIDEuNVoiLz48cGF0aCBkPSJNMTguOTMgNS41OGMxLjMzIDEuODUgMi4wNiA0LjA3IDIuMDYgNi40MSAwIDIuMzMtLjczIDQuNTYtMi4wNyA2LjQxIC0uMzMuNDQtLjIzIDEuMDcuMjIgMS4zOSAuNDQuMzIgMS4wNy4yMiAxLjM5LS4yMyAxLjU3LTIuMiAyLjQ0LTQuODMgMi40NC03LjU5cy0uODctNS40LTIuNDUtNy41OWMtLjMzLS40NS0uOTUtLjU2LTEuNC0uMjMgLS40NS4zMi0uNTYuOTQtLjIzIDEuMzlabS00LjAyIDIuOThjLjY5Ljk5IDEuMDcgMi4xOCAxLjA3IDMuNDIgMCAxLjI0LS4zOCAyLjQyLTEuMDggMy40MiAtLjMyLjQ1LS4yMSAxLjA3LjI0IDEuMzkgLjQ1LjMxIDEuMDcuMiAxLjM5LS4yNSAuOTItMS4zNCAxLjQzLTIuOTIgMS40My00LjU4IDAtMS42Ni0uNTEtMy4yNS0xLjQ0LTQuNTggLS4zMi0uNDYtLjk0LS41Ny0xLjQtLjI1IC0uNDYuMzEtLjU3LjkzLS4yNSAxLjM5WiIvPjwvZz48L3N2Zz4=');
+          background-color: rgba(0,0,0,0.5);
+        }
+
 
         &:first-child {
           margin-top: 24px;
