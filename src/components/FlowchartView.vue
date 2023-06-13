@@ -239,8 +239,7 @@ export default {
           element: nodeElement,
           type: nodeProperties[1],
           label: this.truncatedLabelFromTextContent(nodeElement.textContent),
-          outgoing: [],
-          incoming: []
+          outgoing: []
         };
       });
 
@@ -250,16 +249,20 @@ export default {
         const edgeProperties = edgeElement.id.split('_');
         const edgeFrom = 'n' + edgeProperties[1];
         const edgeTo = 'n' + edgeProperties[2];
+        const bidirectionalEdge = edgeProperties.length > 3;
 
         this.flowchartNodes[edgeFrom].outgoing.push({
           edge: edgeElement,
           node: this.flowchartNodes[edgeTo]
         });
 
-        this.flowchartNodes[edgeTo].incoming.push({
-          edge: edgeElement,
-          node: this.flowchartNodes[edgeFrom]
-        });
+        // if edge is bidirectional, additionally add the same edge in reverse to the destination node
+        if (bidirectionalEdge) {
+          this.flowchartNodes[edgeTo].outgoing.push({
+            edge: edgeElement,
+            node: this.flowchartNodes[edgeFrom]
+          });
+        }
       });
 
       this.collectNarrationChapters();
