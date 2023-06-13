@@ -38,7 +38,7 @@
           ]"
           @click="revealedItems.indexOf(chapter.element) !== -1 && jumpNarrationToChapter(index)"
         >
-          <span>{{ chapter.label }} <!-- {{ chapter.repetition ? `(${chapter.repetition})` : '' }} --></span>
+          <span>{{ chapter.label }}</span>
         </li>
       </ul>
     </div>
@@ -46,7 +46,7 @@
       class="jump"
       :class="{ available: jumpActionAvailable }"
       title="Resume playback from selected item"
-      @click="jumpNarrationToCurrentNode()"
+      @click="jumpNarrationToNode(currentNodeId)"
     />
   </div>
 </template>
@@ -136,7 +136,8 @@ export default {
       playbackPosition: 0,
 
       panzoomInstance: undefined,
-      panzoomPosition: {}
+      panzoomPosition: {},
+      mousePressedAboveNode: false
     }
   },
 
@@ -184,7 +185,7 @@ export default {
     currentNarrationChapter() {
       return this.narrationChapters[this.currentNarrationChapterIndex];
     },
-    // determines whether jumpNarrationToCurrentNode() action can be triggered from current node
+    // determines whether jumpNarrationToNode action can be triggered from current node
     jumpActionAvailable() {
       if (
         !this.playbackActive
@@ -207,7 +208,10 @@ export default {
       });
 
       this.panzoomInstance.on('panstart', () => {
-        this.stopPlayback();
+        if (!this.mousePressedAboveNode) {
+          this.stopPlayback();
+        }
+
         this.toggleChapterList(true);
       });
 
@@ -265,15 +269,7 @@ export default {
 
     // populate this.narrationChapters with non-label nodes
     collectNarrationChapters() {
-      const repeatingNodes = {};
-
-      this.narrationTimestamps.forEach(event => {
-        if (!(event[0] in repeatingNodes)) {
-          repeatingNodes[event[0]] = 0;
-        } else {
-          repeatingNodes[event[0]] = 1;
-        }
-      });
+      const alreadyListedPrimaryChapters = [];
 
       this.narrationTimestamps.forEach(event => {
         const eventId = event[0];
@@ -283,21 +279,19 @@ export default {
         const firstItemOrNoDirectRepetition = this.narrationChapters.length === 0 || this.narrationChapters[this.narrationChapters.length - 1].id !== eventId;
         
         if (node.type !== 'label' && firstItemOrNoDirectRepetition) {
-          let repetitionCounter = 0;
-
-          if (repeatingNodes[eventId] > 0) {
-            repetitionCounter = repeatingNodes[eventId];
-            repeatingNodes[eventId] += 1;
-          }
+          const chapterType = node.type === 'question' && alreadyListedPrimaryChapters.indexOf(eventId) === -1
+            ? 'primary'
+            : 'secondary';
 
           this.narrationChapters.push({
             id: eventId,
             element: node.element,
-            type: node.type === 'question' ? 'primary' : 'secondary',
+            type: chapterType,
             label: node.label,
-            repetition: repetitionCounter,
             timestamp: eventTimestamp,
-          })
+          });
+
+          alreadyListedPrimaryChapters.push(eventId);
         }
       });
 
@@ -312,10 +306,29 @@ export default {
       Object.entries(this.flowchartNodes).forEach(([nodeId, node]) => {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
-            vueInstance.stopPlayback();
-            vueInstance.setCurrentNodeId(nodeId);
+            // if event is triggered during playback (and does not originate from the node already active),
+            // jump narration position to that node; otherwise set node ID without affecting narration
+            if (vueInstance.playbackActive && nodeId !== vueInstance.currentNodeId) {
+              vueInstance.jumpNarrationToNode(nodeId);
+            } else {
+              // vueInstance.stopPlayback();
+              vueInstance.setCurrentNodeId(nodeId);
+            }
           }
         });
+
+        // upon mousedowning revealed node, set mousePressedAboveNode property to true
+        // to prevent Panzoom’s panstart listener from stopping playback
+        node.element.addEventListener('mousedown', function() {
+          if (vueInstance.revealedItems.indexOf(node.element) !== -1) {
+            vueInstance.mousePressedAboveNode = true;
+          }
+        });
+      });
+
+      // set mousePressedAboveNode back to false whenever mouse is released
+      document.addEventListener('mouseup', function() {
+        vueInstance.mousePressedAboveNode = false;
       });
     },
 
@@ -403,23 +416,30 @@ export default {
     },
 
     // jump playback position to current node
-    jumpNarrationToCurrentNode() {
-      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === this.currentNodeId);
+    jumpNarrationToNode(nodeId) {
+      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === nodeId);
 
-      let furthestNodeOccurrence = ['', 0];
+      if (nodeOccurrencesInNarration.length !== 0) {
+        let furthestNodeOccurrence = ['', 0];
 
-      const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
-        if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
-          this.$refs.media.currentTime = event[1];
-          return false;
-        } else {
-          furthestNodeOccurrence = event;
-          return true;
+        const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
+          if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
+            this.$refs.media.currentTime = event[1];
+            return false;
+          } else {
+            furthestNodeOccurrence = event;
+            return true;
+          }
+        });
+
+        if (noUnlistenedOccurrences) {
+          this.$refs.media.currentTime = furthestNodeOccurrence[1];
         }
-      });
-
-      if (noUnlistenedOccurrences) {
-        this.$refs.media.currentTime = furthestNodeOccurrence[1];
+      } else {
+        // if destination node does not occur within narration (happens when jump is triggered through node’s
+        // click event while playback is active), stop playback and update the current node ID instead
+        this.stopPlayback();
+        this.setCurrentNodeId(nodeId);
       }
     },
 
@@ -496,7 +516,7 @@ export default {
     currentNarrationNodeId: function() {
       this.setCurrentNodeId(this.currentNarrationNodeId);
 
-      // start playback if not active already (happens when jumpNarrationToCurrentNode triggered)
+      // start playback if not active already (happens when jumpNarrationToNode triggered)
       if (!this.playbackActive) {
         this.startPlayback(true);
       }
@@ -773,19 +793,6 @@ export default {
         background-repeat: no-repeat;
         cursor: default;
 
-        &.secondary {
-          // padding-left: 96px;
-          // font-style: italic;
-          // color: rgba(0,0,0,0.5);
-
-          &:before {
-            content: '—';
-            opacity: 0.25;
-            margin-right: 6px;
-            font-weight: normal;
-          }
-        }
-
         &.revealed {
           cursor: pointer;
         }
@@ -816,6 +823,34 @@ export default {
           background-color: rgba(0,0,0,0.5);
         }
 
+        &.primary {
+          position: relative;
+          margin-top: 24px;
+
+          &:not(:first-child):before {
+            position: absolute;
+            display: block;
+            content: '';
+            top: -12px;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(0,0,0,0.1);
+          }
+        }
+
+        &.secondary {
+          // padding-left: 96px;
+          // font-style: italic;
+          // color: rgba(0,0,0,0.5);
+
+          // &:before {
+          //   content: '—';
+          //   opacity: 0.25;
+          //   margin-right: 6px;
+          //   font-weight: normal;
+          // }
+        }
 
         &:first-child {
           margin-top: 24px;
