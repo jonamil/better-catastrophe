@@ -5,7 +5,6 @@
       :class="{ ready: flowchartElement }"
       @loaded="initZoom($event)"
     />
-    <InlineSvg :src="filtersAsset" />
   </div>
   <audio ref="media" @timeupdate="playbackPosition = $event.target.currentTime">
     <source src="/narration.mp3" type="audio/mp3" />
@@ -57,7 +56,6 @@ import InlineSvg from 'vue-inline-svg';
 import * as d3 from 'd3';
 
 import flowchartAsset from '@/assets/flowchart.svg';
-import filtersAsset from '@/assets/filters.svg';
 
 export default {
   name: 'FlowchartView',
@@ -69,7 +67,6 @@ export default {
   data() {
     return {
       flowchartAsset,
-      filtersAsset,
 
       zoomBehavior: undefined,
       selectedFlowchartContainer: undefined,
@@ -615,18 +612,22 @@ export default {
 
 <style lang="scss">
 :root {
-  --accent-color: 241,27,130;
+  --background-color: #282828;
+  --teased-color: #171717;
+  --accent-color: 255,64,86;
+  --accent-color-hover: 255,115,131;
   --transition-duration: 0.1s;
   --transition-timing: ease-in-out;
 }
 
 .flowchart {
   position: absolute;
+  overflow: hidden;
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
-  overflow: hidden;
+  background: var(--background-color);
 
   svg:first-of-type {
     opacity: 0;
@@ -642,103 +643,128 @@ export default {
     // nodes
     g[id^=n] {
       opacity: 0;
-      // transition: all var(--transition-duration) var(--transition-timing);
 
-      // path:last-of-type {
-      //   stroke: rgba(0,0,0,0.75);
-      // }
-
-      // // background shapes
-      // path {
-      //   fill: transparent;
-      // }
-
-      // // question nodes
-      // &[id$=question] {
-      //   path {
-      //     fill: rgba(0,0,0,0.2);
-      //   }
-      // }
-
-      // by default, hide text within non-label nodes
-      &:not([id$=label]) {
-        text {
-          fill: transparent;
-        }
+      path, text, rect {
+        transition: all 0.075s var(--transition-timing);
       }
 
-      // by default, obscure text within label nodes
+      path {
+        fill: var(--teased-color);
+        stroke: transparent;
+      }
+
+      text {
+        fill: transparent;
+      }
+
       &[id$=label] {
-        text {
-          filter: url('#label-obscured');
+        rect {
+          fill: var(--teased-color);
+          fill-opacity: 1;
         }
       }
 
-      // teased nodes (not yet revealed/interactive)
-      &.teased {
-        opacity: 0.125;
-        
-        &:not(.revealed) {
-          path:first-of-type {
-            fill: rgba(0,0,0,0.5);
-            stroke: transparent;
-          }
-        }
+      // all visible nodes (teased and revealed)
+      &.teased, &.revealed {
+        opacity: 1;
       }
 
       // revealed nodes (interactive and text visible)
       &.revealed {
-        opacity: 0.25;
-        
-        &:hover {
-          opacity: 0.75;
-          cursor: pointer;
+        path {
+          opacity: 0.35;
+          fill: var(--background-color);
+          stroke: #fff;
         }
 
         text {
-          fill: initial;
-          filter: none;
+          fill: rgba(255,255,255,0.75);
+        }
+
+        &[id$=question] {
+          path {
+            fill: rgba(255,255,255,0.4);
+          }
+        }
+
+        &[id$=definition] {
+          path {
+            fill: rgba(0,0,0,0.001);
+          }
+
+          path:first-of-type {
+            stroke: transparent;
+          }
+        }
+
+        &[id$=label] {
+          rect {
+            fill: transparent;
+          }
+        }
+
+        &:hover {
+          cursor: pointer;
+
+          path {
+            opacity: 0.5;
+          }
+
+          text {
+            fill: #fff;
+          }
         }
       }
 
       // next nodes and currently selected node
       &.next, &.current {
-        &:hover {
-          opacity: 1;
-        }
-
-        path:last-of-type {
+        path {
+          opacity: 0.85;
           stroke: rgb(var(--accent-color));
-        }
-
-        &[id$=question] {
-          path {
-            fill: rgba(var(--accent-color), 0.2);
-          }
         }
 
         text {
           fill: rgb(var(--accent-color));
         }
+
+        &[id$=question] {
+          path {
+            fill: rgba(var(--accent-color), 0.25);
+          }
+        }
+
+        &:not(.current):hover {
+          path {
+            opacity: 0.85;
+          }
+
+          path:last-of-type {
+            stroke: rgb(var(--accent-color-hover));
+          }
+
+          text {
+            fill: rgb(var(--accent-color-hover));
+          }
+
+          &[id$=question] {
+            path {
+              fill: rgba(var(--accent-color-hover), 0.3);
+            }
+          }
+        }
       }
 
-      // next nodes
-      &.next {
-        opacity: 0.75;
-
-        // &[id$=label] {
-        //   text:hover {
-        //     filter: url('#label-next-hover');
-        //   }
-        // }
-      }
-
-      // currently active node
+      // currently selected node
       &.current {
-        opacity: 1;
+        &[id$=definition] {
+          path:last-of-type {
+            opacity: 0;
+          }
+        }
 
         &:not([id$=label]) {
           path {
+            opacity: 1;
             fill: rgb(var(--accent-color));
           }
 
@@ -750,7 +776,10 @@ export default {
         &[id$=label] {
           text {
             fill: #fff;
-            filter: url('#label-current');
+          }
+
+          rect {
+            fill: rgb(var(--accent-color));
           }
         }
       }
@@ -761,23 +790,31 @@ export default {
       opacity: 0;
       pointer-events: none;
 
-      path {
-        fill: rgba(0,0,0,0.75);
+      path, text {
+        fill: var(--teased-color);
       }
 
-      &.teased {
-        opacity: 0.15;
+      &.teased, &.revealed {
+        opacity: 1;
       }
 
       &.revealed {
-        opacity: 0.15;
+        path {
+          fill: rgba(255,255,255,0.25);
+        }
+
+        text {
+          fill: rgba(255,255,255,0.4);
+        }
       }
 
       &.next {
-        opacity: 0.5;
+        path {
+          fill: rgba(var(--accent-color), 0.6);
+        }
 
-        path, text {
-          fill: rgb(var(--accent-color));
+        text {
+          fill: rgba(var(--accent-color), 0.75);
         }
       }
     }
@@ -788,6 +825,9 @@ export default {
   position: absolute;
   bottom: 16px;
   left: 16px;
+  width: 460px;
+  font-size: 15px;
+  line-height: 20px;
   pointer-events: none;
 
   > * {
@@ -809,7 +849,7 @@ export default {
     background-size: 32px;
     background-position: center;
     background-repeat: no-repeat;
-    background-color: #333;
+    background-color: rgba(255,255,255,0.4);
     cursor: pointer;
     transition: background-color var(--transition-duration) var(--transition-timing);
   }
@@ -821,10 +861,11 @@ export default {
     width: 384px;
     height: 64px;
     border-radius: 32px;
-    background: rgba(230,230,230,0.8);
+    color: #fff;
+    background: rgba(90,90,90,0.75);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    box-shadow: 0 0 0 2px #fff;
+    box-shadow: 0 0 0 2px var(--background-color);
     transition: all var(--transition-duration) var(--transition-timing);
 
     button.playback {
@@ -854,6 +895,10 @@ export default {
       box-shadow: inset 0 1px 0 transparent;
       transition: box-shadow var(--transition-duration) var(--transition-timing);
       cursor: pointer;
+
+      span {
+        padding-bottom: 1px;
+      }
     }
 
     ul.chapters {
@@ -867,10 +912,10 @@ export default {
       list-style: none;
 
       li {
-        padding: 8px 0 8px 80px;
-        font-weight: 650;
         background-size: 10px;
         background-position: center left 27px;
+        padding: 6.5px 0 7.5px 80px;
+        font-weight: 600;
         background-repeat: no-repeat;
         cursor: default;
 
@@ -883,8 +928,8 @@ export default {
         }
 
         &:not(.revealed) span {
-          filter: url('#chapter-obscured');
-          opacity: 0.1;
+          color: transparent;
+          background: rgba(0,0,0,0.4);
         }
 
         &.revealed:not(.listened):not(.active) {
@@ -901,7 +946,7 @@ export default {
           background-size: 18px;
           background-position: center left 23px;
           background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0iI0ZGRiI+PHBhdGggZD0iTTIgMTAuNTljMC0uNTYgMC0uODUuMS0xLjA2IC4wOS0uMTkuMjQtLjM1LjQzLS40NCAuMjEtLjExLjQ5LS4xMSAxLjA1LS4xMWgxLjczYy4yNCAwIC4zNiAwIC40OC0uMDMgLjEtLjAzLjE5LS4wNy4yOC0uMTIgLjEtLjA3LjE4LS4xNS4zNi0uMzNsMy4xNi0zLjE3Yy40Mi0uNDMuNjQtLjY1LjgyLS42NiAuMTUtLjAyLjMxLjA1LjQxLjE3IC4xMS4xNC4xMS40NC4xMSAxLjA0djEyLjEzYzAgLjYgMCAuOS0uMTIgMS4wNCAtLjExLjEyLS4yNi4xOC0uNDIuMTcgLS4xOS0uMDItLjQtLjIzLS44My0uNjZsLTMuMTctMy4xN2MtLjE4LS4xOC0uMjYtLjI2LS4zNy0uMzMgLS4wOS0uMDYtLjE5LS4xLS4yOS0uMTIgLS4xMi0uMDMtLjI0LS4wMy0uNDktLjAzSDMuNWMtLjU3IDAtLjg1IDAtMS4wNi0uMTEgLS4xOS0uMS0uMzUtLjI1LS40NC0uNDQgLS4xMS0uMjItLjExLS41LS4xMS0xLjA2di0yLjhaIi8+PHBhdGggZD0iTTMgMTAuNTljMC0uNSAwLS42MiAwLS42IC0uMDEgMC0uMDEgMC0uMDEgMCAtLjAyIDAgLjEtLjAxLjYtLjAxaDEuNzNjLjM5IDAgLjUtLjAxLjcxLS4wNiAuMi0uMDUuMzktLjEzLjU3LS4yNCAuMDUtLjA0LjA1LS4wNC4wOS0uMDcgLjEzLS4xLjItLjE3LjQ0LS40MWwzLjE2LTMuMTdjLjI2LS4yNy4zNi0uMzYuNDMtLjQzIC0uMDIgMC0uMDguMDQtLjI1LjA1IC0uMTYuMDEtLjMyLS4wNi0uNDItLjE4IC0uMTEtLjEzLS4xMy0uMi0uMTQtLjIyIDAgLjEuMDEuMjMuMDEuNjF2MTIuMTNjMCAuMzgtLjAxLjUtLjAyLjYxIDAtLjAyLjAyLS4wOS4xMy0uMjIgLjEtLjEzLjI1LS4xOS40MS0uMTggLjE2LjAxLjIzLjA0LjI0LjA1IC0uMDgtLjA3LS4xOC0uMTYtLjQ0LS40M2wtMy4xNy0zLjE3Yy0uMjktLjI5LS4zNy0uMzYtLjU1LS40NyAtLjE4LS4xMS0uMzgtLjItLjU4LS4yNCAtLjIxLS4wNi0uMzItLjA2LS43Mi0uMDZIMy40OGMtLjUgMC0uNjItLjAxLS42IDAgLS4wMS0uMDEtLjAxIDAtLjAxIDAgMCAuMDEtLjAxLS4xMS0uMDEtLjYxdi0yLjhabS0yIDB2Mi44YzAgLjkuMDEgMS4xMS4yMSAxLjUgLjE5LjM3LjQ5LjY4Ljg3Ljg3IC4zOS4yLjYuMjEgMS41LjIxaDEuNzNjLjIxIDAgLjI1IDAgLjI0LS4wMSAwIDAgMCAwIDAgMCAtLjAxLS4wMS4wMi4wMi4xNy4xN2wzLjE2IDMuMTZjLjgxLjgxLjkyLjkgMS40NS45NCAuNDcuMDMuOTQtLjE2IDEuMjUtLjUzIC4zNC0uNDEuMzUtLjU0LjM1LTEuN1Y1Ljg2YzAtMS4xNi0uMDItMS4zLS4zNi0xLjcgLS4zMi0uMzctLjc4LS41Ni0xLjI2LS41MyAtLjU0LjA0LS42NC4xMi0xLjQ2Ljk0TDUuNjggNy43M2MtLjE1LjE0LS4xOS4xNy0uMTkuMTggMC0uMDEgMC0uMDEuMDEtLjAxIC0uMDEgMC0uMDEgMC0uMDEgMCAwLS4wMS0uMDQtLjAxLS4yNS0uMDFIMy41Yy0uOTEgMC0xLjEyLjAxLTEuNTEuMjEgLS4zOC4xOS0uNjkuNDktLjg4Ljg3IC0uMjEuMzktLjIyLjYtLjIyIDEuNVoiLz48cGF0aCBkPSJNMTguOTMgNS41OGMxLjMzIDEuODUgMi4wNiA0LjA3IDIuMDYgNi40MSAwIDIuMzMtLjczIDQuNTYtMi4wNyA2LjQxIC0uMzMuNDQtLjIzIDEuMDcuMjIgMS4zOSAuNDQuMzIgMS4wNy4yMiAxLjM5LS4yMyAxLjU3LTIuMiAyLjQ0LTQuODMgMi40NC03LjU5cy0uODctNS40LTIuNDUtNy41OWMtLjMzLS40NS0uOTUtLjU2LTEuNC0uMjMgLS40NS4zMi0uNTYuOTQtLjIzIDEuMzlabS00LjAyIDIuOThjLjY5Ljk5IDEuMDcgMi4xOCAxLjA3IDMuNDIgMCAxLjI0LS4zOCAyLjQyLTEuMDggMy40MiAtLjMyLjQ1LS4yMSAxLjA3LjI0IDEuMzkgLjQ1LjMxIDEuMDcuMiAxLjM5LS4yNSAuOTItMS4zNCAxLjQzLTIuOTIgMS40My00LjU4IDAtMS42Ni0uNTEtMy4yNS0xLjQ0LTQuNTggLS4zMi0uNDYtLjk0LS41Ny0xLjQtLjI1IC0uNDYuMzEtLjU3LjkzLS4yNSAxLjM5WiIvPjwvZz48L3N2Zz4=');
-          background-color: rgba(0,0,0,0.5);
+          background-color: rgba(255,255,255,0.25);
         }
 
         &.primary {
@@ -920,25 +965,16 @@ export default {
           }
         }
 
-        &.secondary {
-          // padding-left: 96px;
-          // font-style: italic;
-          // color: rgba(0,0,0,0.5);
-
-          // &:before {
-          //   content: '—';
-          //   opacity: 0.25;
-          //   margin-right: 6px;
-          //   font-weight: normal;
-          // }
-        }
-
         &:first-child {
           margin-top: 24px;
         }
 
         &:last-child {
           margin-bottom: 24px;
+        }
+
+        span {
+          display: inline-block;
         }
       }
     }
@@ -956,7 +992,7 @@ export default {
 
       .current-chapter {
         background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBkPSJNMTk5LjUxIDg3LjUxbC04MCA4MGgxNi45N2wtODAtODBjLTQuNjktNC42OS0xMi4yOS00LjY5LTE2Ljk4IDAgLTQuNjkgNC42OC00LjY5IDEyLjI4IDAgMTYuOTdsODAgODBjNC42OCA0LjY4IDEyLjI4IDQuNjggMTYuOTcgMGw4MC04MGM0LjY4LTQuNjkgNC42OC0xMi4yOSAwLTE2Ljk4IC00LjY5LTQuNjktMTIuMjktNC42OS0xNi45OCAwWiIvPjwvc3ZnPg==');
-        box-shadow: inset 0 1px 0 rgba(0,0,0,0.1);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
       }
     }
   }
@@ -968,7 +1004,7 @@ export default {
     margin-left: 12px;
     background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjU2IDI1NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDI1NnYyNTZIMFoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjA4IDQwdjE3NiAwYzAgNC40MS0zLjU5IDgtOCA4IC00LjQyIDAtOC0zLjU5LTgtOHYtNjkuMjNMNzIuNDMgMjIxLjU1aC0uMDAxYy03LjQ3IDQuNjgtMTcuMzEgMi40My0yMS45OS01LjAzIC0xLjU5LTIuNTItMi40My01LjQzLTIuNDUtOC40MVY0Ny44N3YwYy4wNC04LjgxIDcuMjEtMTUuOTIgMTYuMDItMTUuODggMi45Ny4wMSA1Ljg4Ljg2IDguNCAyLjQ0bDExOS41NyA3NC43OFYzOS45OHYwYzAtNC40MiAzLjU4LTggOC04IDQuNDEgMCA4IDMuNTggOCA4WiIvPjwvc3ZnPg==');
     background-color: rgb(var(--accent-color));
-    box-shadow: 0 0 0 2px #fff;
+    box-shadow: 0 0 0 2px var(--background-color);
     transition: all var(--transition-duration) var(--transition-timing);
 
     &.available {
