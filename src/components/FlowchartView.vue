@@ -1,5 +1,5 @@
 <template>
-  <div class="flowchart" id="flowchart">
+  <div id="flowchart" class="flowchart">
     <InlineSvg
       :src="flowchartAsset"
       :class="{ ready: flowchartElement }"
@@ -66,6 +66,8 @@ export default {
 
   data() {
     return {
+      sessionId: undefined,
+
       flowchartAsset,
 
       zoomBehavior: undefined,
@@ -234,6 +236,9 @@ export default {
             this.stopPlayback();
           }
           this.toggleChapterList(true);
+
+          // DOES NOT WORK: log this as the start of a pan interaction
+          // this.logEvent('input_panstart');
         }
       });
 
@@ -250,11 +255,9 @@ export default {
         const k = this.selectedFlowchartContainer.property('__zoom').k || 1;
 
         if (event.ctrlKey) {
-          // Use mouse wheel + ctrl key, or trackpad pinch to zoom.
           // const nextZoom = k * Math.pow(2, -event.deltaY * 0.01);
           // this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, nextZoom, pointer(event));
         } else {
-          // Use mouse wheel or trackpad with 2 fingers to pan.
           this.zoomBehavior.translateBy(
             this.selectedFlowchartContainer,
             -(event.deltaX / k),
@@ -309,7 +312,7 @@ export default {
       });
 
       this.collectNarrationChapters();
-      this.addClickListeners();
+      this.addMouseListeners();
       this.setCurrentNodeId(this.currentNodeId);
     },
 
@@ -346,7 +349,7 @@ export default {
     },
 
     // attach click listeners to node elements
-    addClickListeners() {
+    addMouseListeners() {
       const vueInstance = this;
 
       Object.entries(this.flowchartNodes).forEach(([nodeId, node]) => {
@@ -361,6 +364,8 @@ export default {
               vueInstance.setCurrentNodeId(nodeId);
             }
           }
+
+          vueInstance.logEvent('input_clickNode');
         });
 
         // upon mousedowning revealed node, set mousePressedAboveNode property to true
@@ -413,6 +418,8 @@ export default {
           destinationCoords.y
         );
       }
+
+      this.updateFlowchartAppearance();
     },
 
     // add node element to revealedItems array
@@ -482,6 +489,8 @@ export default {
       if (this.narrationChapters[index].id === this.currentNarrationNodeId) {
         this.startPlayback();
       }
+
+      this.logEvent('call_jumpNarrationToChapter');
     },
 
     // jump playback position to current node
@@ -510,13 +519,14 @@ export default {
         this.stopPlayback();
         this.setCurrentNodeId(nodeId);
       }
+
+      this.logEvent('call_jumpNarrationToNode');
     },
 
     setCurrentNodeId(nodeId) {
       this.currentNodeId = nodeId;
 
       this.moveToNode(this.currentNode);
-      this.updateFlowchartAppearance();
       this.toggleChapterList(true);
     },
 
@@ -573,15 +583,42 @@ export default {
         words.pop();
         return words.join(' ') + '…';
       }
+    },
+
+    // log an event via a post request
+    logEvent(eventType, additionalData = {}) {
+      const currentState = {
+        nodeId: this.currentNodeId,
+        narrationNodeIndex: this.currentNarrationNodeIndex,
+        narrationChapterIndex: this.currentNarrationChapterIndex,
+        playbackActive: +this.playbackActive,
+        playbackPosition: this.playbackPosition,
+        chapterListVisible: +this.chapterListVisible
+      };
+
+      fetch('http://localhost/bc-instrumentation/log.php', {
+        method: 'post',
+        body: JSON.stringify({
+          eventType,
+          session: this.sessionId,
+          timestamp: Math.round(performance.now()),
+          ...currentState,
+          ...additionalData
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      // }).then(response => {
+      //   return response;
+      // }).then(jsonResponse => {
+      //   console.log(jsonResponse);
+      }).catch(error => {
+        console.log(error);
+      });
     }
   },
 
   watch: {
-    // when the narration index changes, mark that timestamp/event as listened
-    currentNarrationNodeIndex: function() {
-      this.markTimestampAsListened(this.currentNarrationNodeIndex);
-    },
-
     // update current node ID upon change of narration node ID (which changes based on playback position)
     currentNarrationNodeId: function() {
       this.setCurrentNodeId(this.currentNarrationNodeId);
@@ -592,10 +629,31 @@ export default {
       }
     },
 
+    // when the narration index changes, mark that timestamp/event as listened
+    currentNarrationNodeIndex: function() {
+      this.markTimestampAsListened(this.currentNarrationNodeIndex);
+    },
+
     // when the narration chapter index changes, mark that chapter as listened
     currentNarrationChapterIndex: function() {
       this.markChapterAsListened(this.currentNarrationChapterIndex);
+    },
+
+    // log certain properties changing
+    currentNodeId: function() {
+      this.logEvent('update_nodeId');
+    },
+    playbackActive: function() {
+      this.logEvent('update_playbackActive');
+    },
+    chapterListVisible: function() {
+      this.logEvent('update_chapterListVisible');
     }
+  },
+
+  created() {
+    // generate unique session ID for logging
+    this.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
   },
 
   mounted() {
@@ -604,7 +662,28 @@ export default {
       if (event.key === ' ' || event.key === 'Space') {
         this.togglePlayback();
         event.preventDefault();
+
+        this.logEvent('input_spacebar');
       }
+    });
+
+    // log click events alongside the event targets’ DOM paths
+    document.addEventListener('click', event => {
+      const path = event.path || event.composedPath();
+      
+      const selectors = path.map(element => {
+        element.classString = '';
+
+        if (element.classList) {
+          element.classList.forEach(className => {
+            element.classString += '.' + className;
+          });
+        }
+
+        return element.localName + (element.id ? '#' + element.id : '') + (element.classString ? element.classString : '');
+      });
+
+      this.logEvent('input_click', { eventTarget: selectors.toString() });
     });
   }
 }
