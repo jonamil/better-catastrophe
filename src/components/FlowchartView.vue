@@ -7,7 +7,7 @@
     />
   </div>
   <audio ref="media" @timeupdate="playbackPosition = $event.target.currentTime">
-    <source src="/narration.mp3" type="audio/mp3" />
+    <source src="@/data/narration.m4a" type="audio/mp4" />
   </audio>
   <div class="controls">
     <div class="narration" :class="{ playing: playbackActive, chapters: chapterListVisible }">
@@ -56,6 +56,7 @@ import InlineSvg from 'vue-inline-svg';
 import * as d3 from 'd3';
 
 import flowchartAsset from '@/assets/flowchart.svg';
+import narrationTimestamps from '@/data/timestamps.json';
 
 export default {
   name: 'FlowchartView',
@@ -80,55 +81,7 @@ export default {
       teasedItems: [],
       revealedItems: [],
 
-      narrationTimestamps: [
-        // Is climate change for real?
-        ['n001', 59.5],
-        ['n002', 61.5],
-        ['n001', 62.9],
-        ['n002', 63.9],
-        ['n001', 65.2],
-        ['n004', 66],
-        ['n005', 68.1],
-        ['n007', 69.2],
-        ['n008', 70.8],
-        ['n009', 73.4],
-        ['n010', 75.5],
-        ['n011', 77.3],
-        ['n005', 79.2],
-        ['n006', 80.3],
-        ['n001', 81.6],
-        ['n012', 83.5],
-        // Are we fucked?
-        ['n013', 85.6],
-        ['n014', 86.5],
-        ['n013', 88.2],
-        ['n014', 88.8],
-        ['n013', 89.6],
-        ['n015', 90.8],
-        ['n016', 103],
-        ['n017', 110],
-        ['n022', 112.6],
-        ['n016', 115],
-        ['n023', 121.2],
-        ['n024', 125.2],
-        ['n025', 128.5],
-        ['n026', 132.6],
-        ['n027', 162.6],
-        ['n028', 174],
-        ['n029', 176],
-        ['n028', 178.8],
-        ['n030', 180],
-        ['n031', 181.8],
-        ['n032', 184.5],
-        ['n033', 189],
-        ['n032', 195],
-        ['n034', 206],
-        ['n035', 208.2],
-        ['n026', 211],
-        ['n034', 220.8],
-        ['n037', 233],
-        ['n038', 240]
-      ],
+      narrationTimestamps,
       listenedTimestampIndexes: [],
 
       narrationChapters: [],
