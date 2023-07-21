@@ -8,7 +8,6 @@
   <div class="intro" :class="{ visible: introPanelVisible }">
     <div class="outer">
       <div class="inner">
-        <button class="close" title="Close introduction" @click="$emit('toggleIntroPanel')"></button>
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
         <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
@@ -36,6 +35,7 @@
         </p>
       </div>
     </div>
+    <button class="close" title="Close introduction" @click="$emit('toggleIntroPanel')"></button>
   </div>
 </template>
 
@@ -149,27 +149,6 @@ button.open {
     box-sizing: border-box;
   }
 
-  button.close {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    appearance: none;
-    border: none;
-    border-radius: 100%;
-    background-position: center;
-    background-image: url('@/assets/icons/close.svg');
-    background-color: rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: transform var(--transition-duration) var(--transition-timing);
-
-    &:hover {
-      transform: scale(1.125);
-    }
-  }
-
   h1 {
     max-width: 284px;
     margin: 0;
@@ -249,6 +228,34 @@ button.open {
       img {
         width: 100%;
       }
+    }
+  }
+
+  button.close {
+    position: absolute;
+    opacity: 0;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    appearance: none;
+    border: none;
+    border-radius: 100%;
+    background-position: center;
+    background-image: url('@/assets/icons/close.svg');
+    background-color: rgba(111,111,111,0.75);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    cursor: pointer;
+    transition: opacity var(--transition-duration-long) var(--transition-timing), transform var(--transition-duration) var(--transition-timing);
+
+    &:hover {
+      transform: scale(1.125);
+    }
+
+    @at-root .intro.visible button.close {
+      opacity: 1;
     }
   }
 }
