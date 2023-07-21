@@ -466,25 +466,38 @@ export default {
       this.logEvent('call_jumpNarrationToChapter');
     },
 
-    // jump playback position to current node
+    // jump playback position to node (either current node or node clicked during playback)
     jumpNarrationToNode(nodeId) {
       const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === nodeId);
 
       if (nodeOccurrencesInNarration.length !== 0) {
-        let furthestNodeOccurrence = ['', 0];
+        // if playback is active, jump to the next occurrence after the current playback position or the final one if none exists
+        if (this.playbackActive) {
+          const nextNodeOccurrenceAfterPlaybackPosition = nodeOccurrencesInNarration.find(event => event[1] >= this.playbackPosition);
 
-        const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
-          if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
-            this.$refs.media.currentTime = event[1];
-            return false;
+          if (nextNodeOccurrenceAfterPlaybackPosition) {
+            this.$refs.media.currentTime = nextNodeOccurrenceAfterPlaybackPosition[1];
           } else {
-            furthestNodeOccurrence = event;
-            return true;
+            const lastNodeOccurrence = nodeOccurrencesInNarration[nodeOccurrencesInNarration.length - 1];
+            this.$refs.media.currentTime = lastNodeOccurrence[1];
           }
-        });
+        // if playback is paused, jump to the first unlistened occurrence in narration sequence or the final one if none exists
+        } else {
+          let furthestNodeOccurrence = ['', 0];
 
-        if (noUnlistenedOccurrences) {
-          this.$refs.media.currentTime = furthestNodeOccurrence[1];
+          const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
+            if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
+              this.$refs.media.currentTime = event[1];
+              return false;
+            } else {
+              furthestNodeOccurrence = event;
+              return true;
+            }
+          });
+
+          if (noUnlistenedOccurrences) {
+            this.$refs.media.currentTime = furthestNodeOccurrence[1];
+          }
         }
       } else {
         // if destination node does not occur within narration (happens when jump is triggered through node’s
