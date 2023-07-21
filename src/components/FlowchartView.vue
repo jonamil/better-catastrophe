@@ -645,14 +645,17 @@ export default {
 <style lang="scss">
 @import '@/assets/variables.css';
 
-.flowchart {
+#flowchart {
   position: absolute;
   overflow: hidden;
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--background-color);
+
+  *::selection {
+    background: transparent;
+  }
 
   svg:first-of-type {
     opacity: 0;
@@ -706,7 +709,7 @@ export default {
           fill: rgba(255,255,255,0.75);
         }
 
-        &[id$=question] {
+        &[id$=chapter], &[id$=question] {
           path {
             fill: rgba(255,255,255,0.4);
           }
@@ -718,6 +721,13 @@ export default {
           }
 
           path:first-of-type {
+            stroke: transparent;
+          }
+        }
+
+        &[id$=collection] {
+          path:first-of-type {
+            fill: rgba(0,0,0,0.001);
             stroke: transparent;
           }
         }
@@ -752,7 +762,7 @@ export default {
           fill: rgb(var(--accent-color));
         }
 
-        &[id$=question] {
+        &[id$=chapter], &[id$=question] {
           path {
             fill: rgba(var(--accent-color), 0.25);
           }
@@ -761,9 +771,6 @@ export default {
         &:not(.current):hover {
           path {
             opacity: 0.85;
-          }
-
-          path:last-of-type {
             stroke: rgb(var(--accent-color-hover));
           }
 
@@ -771,9 +778,15 @@ export default {
             fill: rgb(var(--accent-color-hover));
           }
 
-          &[id$=question] {
+          &[id$=chapter], &[id$=question] {
             path {
               fill: rgba(var(--accent-color-hover), 0.3);
+            }
+          }
+
+          &[id$=definition], &[id$=collection] {
+            path:first-of-type {
+              stroke: transparent;
             }
           }
         }
