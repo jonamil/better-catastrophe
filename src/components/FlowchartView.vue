@@ -179,7 +179,7 @@ export default {
         .clickDistance([16]);
 
       this.zoomBehavior.on('zoom', event => {
-        this.selectedFlowchartContainer.select('svg').attr('transform', event.transform.toString());
+        this.selectedFlowchartContainer.select('svg g').attr('transform', event.transform.toString());
       });
 
       this.zoomBehavior.on('start', event => {
