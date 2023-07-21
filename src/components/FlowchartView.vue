@@ -1,67 +1,56 @@
 <template>
-  <div id="flowchart" class="flowchart">
+  <div id="flowchart">
     <InlineSvg
       :src="flowchartAsset"
       :class="{ ready: flowchartElement }"
       @loaded="initZoom($event)"
     />
   </div>
-  <audio ref="media" @timeupdate="playbackPosition = $event.target.currentTime">
+  <audio
+    ref="media"
+    @timeupdate="playbackPosition = $event.target.currentTime"
+    @stalled="mediaBuffering = true"
+    @loadeddata="mediaBuffering = false"
+    @playing="mediaBuffering = false"
+    @ended="stopPlayback(); toggleChapterList()"
+  >
     <source src="@/data/narration.m4a" type="audio/mp4" />
   </audio>
-  <div class="controls">
-    <div class="narration" :class="{ playing: playbackActive, chapters: chapterListVisible }">
-      <button
-        class="playback"
-        :class="{ current: currentNodeId === currentNarrationNodeId }"
-        :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
-        @click="togglePlayback()"
-      />
-      <div
-        class="current-chapter"
-        :title="chapterListVisible ? 'Close narration log' : 'Open narration log'"
-        @click="toggleChapterList()"
-      >
-        <span v-if="currentNarrationChapter">
-          {{ currentNarrationChapter.label }}
-        </span>
-      </div>
-      <ul ref="chapters" class="chapters">
-        <li
-          v-for="(chapter, index) in narrationChapters"
-          :key="index"
-          :class="[
-            chapter.type,
-            revealedItems.indexOf(chapter.element) !== -1 ? 'revealed' : '',
-            index === currentNarrationChapterIndex ? 'active' : '',
-            listenedChapterIndexes.indexOf(index) !== -1 ? 'listened' : ''
-          ]"
-          @click="revealedItems.indexOf(chapter.element) !== -1 && jumpNarrationToChapter(index)"
-        >
-          <span>{{ chapter.label }}</span>
-        </li>
-      </ul>
-    </div>
-    <button
-      class="jump"
-      :class="{ available: jumpActionAvailable }"
-      title="Resume playback from selected item"
-      @click="jumpNarrationToNode(currentNodeId)"
-    />
-  </div>
+  <PlaybackControls
+    :narrationChapters="narrationChapters"
+    :currentNodeId="currentNodeId"
+    :currentNarrationNodeId="currentNarrationNodeId"
+    :currentNarrationChapterIndex="currentNarrationChapterIndex"
+    :currentNarrationChapter="currentNarrationChapter"
+    :listenedChapterIndexes="listenedChapterIndexes"
+    :revealedItems="revealedItems"
+    :playbackActive="playbackActive"
+    :mediaBuffering="mediaBuffering"
+    :jumpActionVisible="jumpActionVisible"
+    :jumpActionAvailable="jumpActionAvailable"
+    :chapterListVisible="chapterListVisible"
+    :introPanelVisible="introPanelVisible"
+    @togglePlayback="togglePlayback()"
+    @toggleChapterList="toggleChapterList()"
+    @jumpNarrationToChapter="jumpNarrationToChapter($event)"
+    @jumpNarrationToNode="jumpNarrationToNode($event)"
+  />
 </template>
-  
+
 <script>
-import InlineSvg from 'vue-inline-svg';
-import * as d3 from 'd3';
+import PlaybackControls from '@/components/PlaybackControls.vue';
 
 import flowchartAsset from '@/assets/flowchart.svg';
 import narrationTimestamps from '@/data/timestamps.json';
+
+import InlineSvg from 'vue-inline-svg';
+import * as d3 from 'd3';
 
 export default {
   name: 'FlowchartView',
 
   components: {
+    PlaybackControls,
     InlineSvg
   },
 
@@ -70,10 +59,6 @@ export default {
       sessionId: undefined,
 
       flowchartAsset,
-
-      zoomBehavior: undefined,
-      selectedFlowchartContainer: undefined,
-      
       flowchartElement: undefined,
       flowchartNodes: {},
 
@@ -86,13 +71,17 @@ export default {
 
       narrationChapters: [],
       listenedChapterIndexes: [],
-      chapterListVisible: false,
 
       playbackActive: false,
       playbackPosition: 0,
-      
+      mediaBuffering: false,
+
+      chapterListVisible: false,
       mousePressedAboveNode: false,
 
+      zoomBehavior: undefined,
+      selectedFlowchartContainer: undefined,
+      
       movementParameters: {
         screenSizeFactor: 0.15,
         maxTravelThreshold: 256,
@@ -112,10 +101,7 @@ export default {
       return this.flowchartNodes[this.currentNodeId];
     },
     // current index in narrationTimestamps based on media playback position
-    currentNarrationNodeIndex() {  
-      // return Math.max(this.narrationTimestamps.findLastIndex(event => event[1] <= this.playbackPosition), 0);
-      // return Math.max(this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition) - 1, 0);
-
+    currentNarrationNodeIndex() {
       const nextNarrationNodeIndex = this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition);
 
       if (nextNarrationNodeIndex === -1) {
@@ -136,8 +122,6 @@ export default {
     },
     // current chapter index based on playback position
     currentNarrationChapterIndex() {
-      // return Math.max(this.narrationChapters.findIndex(chapter => chapter.timestamp > this.playbackPosition) - 1, 0);
-
       const nextNarrationChapterIndex = this.narrationChapters.findIndex(chapter => chapter.timestamp > this.playbackPosition);
 
       if (nextNarrationChapterIndex === -1) {
@@ -149,6 +133,17 @@ export default {
     // current chapter object
     currentNarrationChapter() {
       return this.narrationChapters[this.currentNarrationChapterIndex];
+    },
+
+    jumpActionVisible() {
+      if (
+        !this.playbackActive
+        && this.currentNodeId !== this.currentNarrationNodeId && this.currentNodeId
+      ) {
+        return true;
+      } else {
+        return false;
+      }
     },
     // determines whether jumpNarrationToNode action can be triggered from current node
     jumpActionAvailable() {
@@ -175,7 +170,7 @@ export default {
       this.zoomBehavior = d3.zoom()
         .translateExtent([
           [-window.innerWidth / 2, -window.innerHeight / 2],
-          [chartDimensions.width * 2 + window.innerWidth / 2, chartDimensions.height * 2 + window.innerHeight / 2]
+          [chartDimensions.width + window.innerWidth / 2, chartDimensions.height + window.innerHeight / 2]
         ])
         .scaleExtent([1, 1])
         .interpolate(d3.interpolateZoom.rho(0))
@@ -284,7 +279,7 @@ export default {
         const firstItemOrNoDirectRepetition = this.narrationChapters.length === 0 || this.narrationChapters[this.narrationChapters.length - 1].id !== eventId;
         
         if (node.type !== 'label' && firstItemOrNoDirectRepetition) {
-          const chapterType = node.type === 'question' && alreadyListedPrimaryChapters.indexOf(eventId) === -1
+          const chapterType = node.type === 'chapter' && alreadyListedPrimaryChapters.indexOf(eventId) === -1
             ? 'primary'
             : 'secondary';
 
@@ -299,9 +294,6 @@ export default {
           alreadyListedPrimaryChapters.push(eventId);
         }
       });
-
-      // temporary: advance initial playback position
-      this.$refs.media.currentTime = this.narrationTimestamps[0][1];
     },
 
     // attach click listeners to node elements
@@ -362,7 +354,6 @@ export default {
       if (!this.playbackActive || travelDistance > travelThreshold) {
         this.zoomBehavior.translateTo(
           this.selectedFlowchartContainer
-            // .interrupt('move')
             .transition('move')
             .ease(d3.easeExpOut)
             // duration dependent on travel distance between min and max thresholds
@@ -479,6 +470,7 @@ export default {
       this.logEvent('call_jumpNarrationToNode');
     },
 
+    // update the current node ID
     setCurrentNodeId(nodeId) {
       this.currentNodeId = nodeId;
 
@@ -488,6 +480,8 @@ export default {
 
     // start playback
     startPlayback(nodeIdAlreadySet = false) {
+      this.toggleChapterList(true);
+
       if (!nodeIdAlreadySet) {
         this.setCurrentNodeId(this.currentNarrationNodeId);
       }
@@ -499,14 +493,13 @@ export default {
 
       this.$refs.media.play();
       this.playbackActive = true;
-
-      this.toggleChapterList(true);
     },
 
     // stop playback
     stopPlayback() {
       this.$refs.media.pause();
       this.playbackActive = false;
+      // this.mediaBuffering = false;
     },
 
     // toggle playback
@@ -519,11 +512,6 @@ export default {
       if (forceClose || this.chapterListVisible) {
         this.chapterListVisible = false;
       } else {
-        this.$refs.chapters.querySelector('li.active').scrollIntoView({
-          behavior: 'instant',
-          block: 'center'
-        });
-
         this.chapterListVisible = true;
       }
     },
@@ -645,6 +633,8 @@ export default {
 
       this.logEvent('input_click', { eventTarget: selectors.toString() });
     });
+
+    document.addEventListener('touchstart', () => {}, true);
   }
 }
 </script>
@@ -867,195 +857,10 @@ export default {
 }
 
 .controls {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  width: 460px;
-  font-size: 15px;
-  line-height: 20px;
-  pointer-events: none;
+  z-index: 101;
+}
 
-  > * {
-    vertical-align: bottom;
-    pointer-events: all;
-  }
-
-  *::selection {
-    background: transparent;
-  }
-
-  button {
-    width: 64px;
-    height: 64px;
-    padding: 0;
-    appearance: none;
-    border: none;
-    border-radius: 100%;
-    background-size: 32px;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-color: rgba(255,255,255,0.4);
-    cursor: pointer;
-    transition: background-color var(--transition-duration) var(--transition-timing);
-  }
-
-  .narration {
-    position: relative;
-    display: inline-block;
-    overflow: hidden;
-    width: 384px;
-    height: 64px;
-    border-radius: 32px;
-    color: #fff;
-    background: rgba(90,90,90,0.75);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 0 0 2px var(--background-color);
-    transition: all var(--transition-duration) var(--transition-timing);
-
-    button.playback {
-      position: absolute;
-      bottom: 0;
-      background-image: url('@/assets/icons/play.svg');
-      z-index: 1;
-
-      &.current {
-        background-color: rgb(var(--accent-color));
-      }
-    }
-
-    .current-chapter {
-      position: absolute;
-      display: flex;
-      align-items: center;
-      bottom: 0;
-      left: 32px;
-      width: 304px;
-      height: 64px;
-      padding-left: 48px;
-      background-size: 18px;
-      background-position: center right 20px;
-      background-repeat: no-repeat;
-      background-image: url('@/assets/icons/chevron-up.svg');
-      box-shadow: inset 0 1px 0 transparent;
-      transition: box-shadow var(--transition-duration) var(--transition-timing);
-      cursor: pointer;
-
-      span {
-        padding-bottom: 1px;
-      }
-    }
-
-    ul.chapters {
-      position: absolute;
-      overflow-y: auto;
-      bottom: 64px;
-      width: 384px;
-      height: 272px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-
-      li {
-        padding: 6.5px 0 7.5px 80px;
-        font-weight: 600;
-        background-size: 8px;
-        background-position: center left 28px;
-        background-repeat: no-repeat;
-        cursor: default;
-
-        &.revealed {
-          cursor: pointer;
-        }
-
-        &.revealed:hover:not(.active) {
-          background-color: rgba(255,255,255,0.125);
-        }
-
-        &:not(.revealed) span {
-          color: transparent;
-          background: rgba(0,0,0,0.4);
-        }
-
-        &.revealed:not(.listened):not(.active) {
-          background-image: url('@/assets/icons/new.svg');
-        }
-
-        &.listened {
-          font-weight: normal;
-        }
-
-        &.active {
-          font-weight: normal;
-          color: #fff;
-          background-size: 18px;
-          background-position: center left 23px;
-          background-image: url('@/assets/icons/playing.svg');
-          background-color: rgba(255,255,255,0.25);
-        }
-
-        &.primary {
-          position: relative;
-          margin-top: 24px;
-
-          &:not(:first-child):before {
-            position: absolute;
-            display: block;
-            content: '';
-            top: -12px;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: rgba(255,255,255,0.15);
-          }
-        }
-
-        &:first-child {
-          margin-top: 24px;
-        }
-
-        &:last-child {
-          margin-bottom: 24px;
-        }
-
-        span {
-          display: inline-block;
-        }
-      }
-    }
-
-    &.playing {
-      width: 64px;
-
-      button.playback {
-        background-image: url('@/assets/icons/pause.svg');
-      }
-    }
-
-    &:not(.playing).chapters {
-      height: 336px;
-
-      .current-chapter {
-        background-image: url('@/assets/icons/chevron-down.svg');
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
-      }
-    }
-  }
-
-  button.jump {
-    position: relative;
-    visibility: hidden;
-    opacity: 0;
-    margin-left: 12px;
-    background-image: url('@/assets/icons/jump.svg');
-    background-color: rgb(var(--accent-color));
-    box-shadow: 0 0 0 2px var(--background-color);
-    transition: all var(--transition-duration) var(--transition-timing);
-
-    &.available {
-      visibility: visible;
-      opacity: 1;
-    }
-  }
+.intro {
+  z-index: 100;
 }
 </style>
