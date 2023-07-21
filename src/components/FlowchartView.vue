@@ -643,14 +643,7 @@ export default {
 </script>
 
 <style lang="scss">
-:root {
-  --background-color: #282828;
-  --teased-color: #171717;
-  --accent-color: 255,64,86;
-  --accent-color-hover: 255,115,131;
-  --transition-duration: 0.1s;
-  --transition-timing: ease-in-out;
-}
+@import '@/assets/variables.css';
 
 .flowchart {
   position: absolute;
