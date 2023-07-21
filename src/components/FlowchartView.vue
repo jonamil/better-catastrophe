@@ -99,7 +99,10 @@ export default {
         distanceFactor: 1.5,
         minDuration: 333,
         maxDuration: 1000
-      }
+      },
+      
+      loggingUrl: '/bettercatastrophe/log.php',
+      formUrl: 'https://tally.so/r/wvr1AD'
     }
   },
 
@@ -549,7 +552,7 @@ export default {
         chapterListVisible: +this.chapterListVisible
       };
 
-      fetch('http://localhost/bc-instrumentation/log.php', {
+      fetch(this.loggingUrl, {
         method: 'post',
         body: JSON.stringify({
           eventType,
@@ -561,10 +564,6 @@ export default {
         headers: {
           'Content-Type': 'application/json'
         }
-      // }).then(response => {
-      //   return response;
-      // }).then(jsonResponse => {
-      //   console.log(jsonResponse);
       }).catch(error => {
         console.log(error);
       });
@@ -607,16 +606,24 @@ export default {
   created() {
     // generate unique session ID for logging
     this.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
+
+    // append session ID to form URL
+    this.formUrl = this.formUrl + '?id=' + this.sessionId;
   },
 
   mounted() {
     // make spacebar trigger togglePlayback
     document.addEventListener('keydown', event => {
       if (event.key === ' ' || event.key === 'Space') {
+        event.preventDefault();
+        
         this.togglePlayback();
+        this.logEvent('input_spacebar');
+      } else if (event.key === 'Enter' && this.jumpActionAvailable) {
         event.preventDefault();
 
-        this.logEvent('input_spacebar');
+        this.jumpNarrationToNode(this.currentNodeId);
+        this.logEvent('input_enter');
       }
     });
 
