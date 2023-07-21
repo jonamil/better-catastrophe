@@ -16,6 +16,11 @@
   >
     <source src="@/data/narration.m4a" type="audio/mp4" />
   </audio>
+  <IntroPanel
+    :introPanelVisible="introPanelVisible"
+    :formUrl="formUrl"
+    @toggleIntroPanel="toggleIntroPanel()"
+  />
   <PlaybackControls
     :narrationChapters="narrationChapters"
     :currentNodeId="currentNodeId"
@@ -38,6 +43,7 @@
 </template>
 
 <script>
+import IntroPanel from '@/components/IntroPanel.vue';
 import PlaybackControls from '@/components/PlaybackControls.vue';
 
 import flowchartAsset from '@/assets/flowchart.svg';
@@ -50,6 +56,7 @@ export default {
   name: 'FlowchartView',
 
   components: {
+    IntroPanel,
     PlaybackControls,
     InlineSvg
   },
@@ -77,6 +84,7 @@ export default {
       mediaBuffering: false,
 
       chapterListVisible: false,
+      introPanelVisible: true,
       mousePressedAboveNode: false,
 
       zoomBehavior: undefined,
@@ -89,6 +97,8 @@ export default {
         minDuration: 333,
         maxDuration: 1000
       },
+
+      introPanelWidth: 416,
       
       loggingUrl: '/bettercatastrophe/log.php',
       formUrl: 'https://tally.so/r/wvr1AD'
@@ -187,6 +197,7 @@ export default {
             this.stopPlayback();
           }
           this.toggleChapterList(true);
+          this.toggleIntroPanel(true);
 
           // DOES NOT WORK: log this as the start of a pan interaction
           // this.logEvent('input_panstart');
@@ -218,6 +229,7 @@ export default {
 
         this.stopPlayback();
         this.toggleChapterList(true);
+        this.toggleIntroPanel(true);
       });
       // .on('wheel', event => event.preventDefault())
 
@@ -330,7 +342,7 @@ export default {
     moveToNode(item) {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
-        x: itemPosition.x + itemPosition.width / 2,
+        x: itemPosition.x + itemPosition.width / 2 - (this.introPanelVisible ? this.introPanelWidth / 2 - 24 : 0),
         y: itemPosition.y + itemPosition.height / 2 + window.innerHeight * 0.05
       };
 
@@ -476,11 +488,13 @@ export default {
 
       this.moveToNode(this.currentNode);
       this.toggleChapterList(true);
+      // this.toggleIntroPanel(true);
     },
 
     // start playback
     startPlayback(nodeIdAlreadySet = false) {
       this.toggleChapterList(true);
+      this.toggleIntroPanel(true);
 
       if (!nodeIdAlreadySet) {
         this.setCurrentNodeId(this.currentNarrationNodeId);
@@ -513,6 +527,18 @@ export default {
         this.chapterListVisible = false;
       } else {
         this.chapterListVisible = true;
+        this.toggleIntroPanel(true);
+      }
+    },
+
+    // toggle visibility of intro panel
+    toggleIntroPanel(forceClose = false) {
+      if (forceClose || this.introPanelVisible) {
+        this.introPanelVisible = false;
+      } else {
+        this.introPanelVisible = true;
+        this.stopPlayback();
+        this.toggleChapterList(true);
       }
     },
 
@@ -537,7 +563,8 @@ export default {
         narrationChapterIndex: this.currentNarrationChapterIndex,
         playbackActive: +this.playbackActive,
         playbackPosition: this.playbackPosition,
-        chapterListVisible: +this.chapterListVisible
+        chapterListVisible: +this.chapterListVisible,
+        introPanelVisible: +this.introPanelVisible
       };
 
       fetch(this.loggingUrl, {

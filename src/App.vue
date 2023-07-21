@@ -27,6 +27,9 @@ body {
 
 #app {
   font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  color: #fff;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 </style>

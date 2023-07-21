@@ -1,0 +1,277 @@
+<template>
+  <PrimaryButton
+    class="open"
+    icon="info"
+    title="Open introduction"
+    @click="$emit('toggleIntroPanel')"
+  />
+  <div class="intro" :class="{ visible: introPanelVisible }">
+    <div class="outer">
+      <div class="inner">
+        <button class="close" title="Close introduction" @click="$emit('toggleIntroPanel')"></button>
+        <h1>I Want A Better Catastrophe</h1>
+        <h2>A flowchart for navigating our climate predicament</h2>
+        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
+        <img src="@/assets/modes.svg" />
+        <h3>Background</h3>
+        <p>Use the button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe”</a>. This interactive online version uses an experimental interface that was created in an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
+        <h3>Feedback</h3>
+        <p>If you have thoughts, ideas, and suggestions for this interface, please fill out this <a class="fo" :href="formUrl" target="_blank">short feedback form</a>.</p>
+        <h3>Credits</h3>
+        <p>
+          <strong><a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
+          <strong><a class="jp" href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
+          <strong><a class="md" href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
+        </p>
+        <h3>Logging</h3>
+        <p>This website logs basic, anonymous information such as user-selected items within the chart. No personally identifiable data such as IP address, cookies, or browser specs is tracked.</p>
+        <div class="logos">
+          <a class="fh" href="https://www.fh-potsdam.de/en/" target="_blank"><img src="@/assets/fhp.svg" /></a>
+          <a class="uc" href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
+        </div>
+        <p>
+          <a href="mailto:marian.doerk@fh-potsdam.de">Contact</a> &nbsp;·&nbsp;
+          <a href="https://www.fh-potsdam.de/impressum" target="_blank">Imprint</a> &nbsp;·&nbsp;
+          <a href="https://www.fh-potsdam.de/en/privacy" target="_blank">Privacy</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import PrimaryButton from '@/components/PrimaryButton.vue';
+
+export default {
+  name: 'IntroPanel',
+
+  components: {
+    PrimaryButton
+  },
+
+  props: {
+    introPanelVisible: Boolean,
+    formUrl: String
+  },
+
+  emits: [
+    'toggleIntroPanel'
+  ]
+}
+</script>
+
+<style lang="scss">
+@import '@/assets/variables.css';
+
+:root {
+  --panel-width: 416px;
+}
+
+button.open {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  box-shadow: 0 0 0 2px var(--background-color);
+}
+
+.intro {
+  position: absolute;
+  overflow: hidden;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  color: rgba(255,255,255,0.9);
+  background: #3E3E3E;
+  transition: width var(--transition-duration-long) var(--transition-timing);
+
+  &.visible {
+    width: var(--panel-width);
+
+    &:after {
+      opacity: 1;
+    }
+
+    .outer {
+      opacity: 1;
+    }
+  }
+
+  &:before, &:after {
+    position: absolute;
+    display: block;
+    content: '';
+    left: 0;
+    width: var(--panel-width);
+    pointer-events: none;
+  }
+
+  &:before {
+    bottom: 0;
+    height: var(--panel-width);
+    background: linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%), linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%);
+    z-index: 1;
+  }
+
+  &:after {
+    opacity: 0;
+    bottom: 80px;
+    height: 340px;
+    background-size: var(--panel-width);
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    background-image: url('@/assets/tentacles.png');
+    transition: opacity var(--transition-duration-long) var(--transition-timing);
+    z-index: 2;
+  }
+
+  *::selection {
+    color: #fff;
+    background: rgb(var(--accent-color));
+  }
+
+  .outer {
+    position: absolute;
+    overflow-y: auto;
+    opacity: 0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transition: opacity var(--transition-duration-long) var(--transition-timing);
+  }
+
+  .inner {
+    position: relative;
+    width: var(--panel-width);
+    padding: 24px 28px var(--panel-width);
+    box-sizing: border-box;
+  }
+
+  button.close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    appearance: none;
+    border: none;
+    border-radius: 100%;
+    background-position: center;
+    background-image: url('@/assets/icons/close.svg');
+    background-color: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: transform var(--transition-duration) var(--transition-timing);
+
+    &:hover {
+      transform: scale(1.125);
+    }
+  }
+
+  h1 {
+    max-width: 284px;
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 100%;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    max-width: 256px;
+    margin: 6px 0 20px;
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 105%;
+  }
+
+  h3 {
+    margin: 24px 0 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 105%;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+
+  p {
+    margin: 12px 0;
+    font-family: 'Vesper Libre', serif;
+    font-size: 16px;
+    line-height: 130%;
+
+    strong {
+      display: block;
+      margin: 6px 0 0;
+    }
+
+    + img {
+      display: block;
+      width: 100%;
+      max-width: 290px;
+      margin: 20px auto 70px;
+    }
+  }
+
+  a {
+    color: inherit;
+    text-decoration-color: rgba(var(--accent-color), 0.6);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    transition: color var(--transition-duration) var(--transition-timing);
+
+    &:hover {
+      color: rgb(var(--accent-color));
+    }
+  }
+
+  .logos {
+    display: flex;
+    align-items: top;
+    gap: 32px;
+    margin: 58px 0 -8px;
+
+    a {
+      flex: 1;
+      transition: opacity var(--transition-duration) var(--transition-timing);
+
+      &:first-child {
+        flex-basis: 25%;
+      }
+
+      &:hover {
+        opacity: 0.65;
+      }
+
+      img {
+        width: 100%;
+      }
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .intro.visible,
+  .intro:before,
+  .intro:after,
+  .intro .inner {
+    width: 100vw;
+  }
+}
+
+@media (max-height: 650px) {
+  .intro:before {
+    height: 35vh;
+  }
+  
+  .intro:after {
+    display: none;
+  }
+
+  .intro .inner {
+    padding-bottom: 128px;
+  }
+}
+</style>
