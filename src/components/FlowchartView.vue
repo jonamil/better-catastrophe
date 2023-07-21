@@ -40,11 +40,16 @@
     @jumpNarrationToChapter="jumpNarrationToChapter($event)"
     @jumpNarrationToNode="jumpNarrationToNode($event)"
   />
+  <FeedbackPrompt
+    :visible="feedbackPromptVisible"
+    :formUrl="formUrl"
+  />
 </template>
 
 <script>
 import IntroPanel from '@/components/IntroPanel.vue';
 import PlaybackControls from '@/components/PlaybackControls.vue';
+import FeedbackPrompt from '@/components/FeedbackPrompt.vue';
 
 import flowchartAsset from '@/assets/flowchart.svg';
 import narrationTimestamps from '@/data/timestamps.json';
@@ -58,6 +63,7 @@ export default {
   components: {
     IntroPanel,
     PlaybackControls,
+    FeedbackPrompt,
     InlineSvg
   },
 
@@ -162,6 +168,14 @@ export default {
         && this.currentNodeId !== this.currentNarrationNodeId && this.currentNodeId
         && this.narrationTimestamps.findIndex(event => event[0] === this.currentNodeId) !== -1
       ) {
+        return true;
+      } else {
+        return false;
+      }
+    },
+    // reveal feedback prompt after threshold of revealed items has been reached
+    feedbackPromptVisible() {
+      if (this.revealedItems.length >= 64) {
         return true;
       } else {
         return false;
