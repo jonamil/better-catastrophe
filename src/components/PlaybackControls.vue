@@ -78,10 +78,6 @@ export default {
     'jumpNarrationToNode'
   ],
 
-  methods: {
-    
-  },
-
   watch: {
     chapterListVisible: function() {
       if (this.chapterListVisible) {
@@ -100,6 +96,7 @@ export default {
 
 .controls {
   position: absolute;
+  z-index: 101;
   bottom: 16px;
   left: 16px;
   right: 16px;
@@ -115,25 +112,6 @@ export default {
   *::selection {
     background: transparent;
   }
-
-  // button {
-  //   width: 64px;
-  //   height: 64px;
-  //   padding: 0;
-  //   appearance: none;
-  //   border: none;
-  //   border-radius: 100%;
-  //   background-size: 32px;
-  //   background-position: center;
-  //   background-repeat: no-repeat;
-  //   background-color: #999;
-  //   cursor: pointer;
-  //   transition: transform var(--transition-duration) var(--transition-timing);
-
-  //   &:hover {
-  //     transform: scale(1.0625);
-  //   }
-  // }
 
   button.playback {
     position: absolute;

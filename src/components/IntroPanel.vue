@@ -76,6 +76,7 @@ button.open {
 
 .intro {
   position: absolute;
+  z-index: 100;
   overflow: hidden;
   top: 0;
   bottom: 0;
@@ -107,13 +108,14 @@ button.open {
   }
 
   &:before {
+    z-index: 1;
     bottom: 0;
     height: var(--panel-width);
     background: linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%), linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%);
-    z-index: 1;
   }
 
   &:after {
+    z-index: 2;
     opacity: 0;
     bottom: 80px;
     height: 340px;
@@ -122,7 +124,6 @@ button.open {
     background-repeat: no-repeat;
     background-image: url('@/assets/tentacles.png');
     transition: opacity var(--transition-duration-long) var(--transition-timing);
-    z-index: 2;
   }
 
   *::selection {
