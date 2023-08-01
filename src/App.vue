@@ -13,7 +13,7 @@
       @stalled="mediaBuffering = true"
       @loadeddata="mediaBuffering = false"
       @playing="mediaBuffering = false"
-      @ended="stopPlayback(); toggleChapterList()"
+      @ended="stopPlayback(true)"
     >
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
@@ -75,6 +75,7 @@ export default {
 
       flowchartAsset,
       flowchartElement: undefined,
+      flowchartDimensions: {},
       flowchartNodes: {},
 
       currentNodeId: 'n001',
@@ -97,7 +98,18 @@ export default {
 
       zoomBehavior: undefined,
       selectedFlowchartContainer: undefined,
-      
+
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      shortestWindowSideLength: Math.min(window.innerWidth, window.innerHeight),
+
+      scaleParameters: {
+        domain: [300, 600],
+        range: [0.85, 1],
+        minReductionFactor: 0.75
+      },
+      scaleLinearForZoomScale: undefined,
+
       movementParameters: {
         screenSizeFactor: 0.15,
         maxTravelThreshold: 256,
@@ -105,8 +117,9 @@ export default {
         minDuration: 333,
         maxDuration: 1000
       },
-
+      
       introPanelWidth: 416,
+      fullWidthIntroPanelThreshold: 600,
       horizontalCenterOffset: 24,
       
       loggingUrl: '/bettercatastrophe/log.php',
@@ -161,28 +174,53 @@ export default {
     jumpActionAvailable() {
       return this.jumpActionVisible && this.narrationTimestamps.findIndex(event => event[0] === this.currentNodeId) !== -1;
     },
-    // reveal feedback prompt after threshold of revealed items has been reached
+    // determines whether feedback prompt is visible (revealed after threshold of revealed items has been reached)
     feedbackPromptVisible() {
       return this.revealedItems.length >= 64;
+    },
+    // calculates travel distance threshold below which no movement happens when a new node becomes active during narration
+    travelThreshold() {
+      return Math.min(
+        this.shortestWindowSideLength * this.movementParameters.screenSizeFactor,
+        this.movementParameters.maxTravelThreshold
+      );
+    },
+    // calculates zoom behavior’s scale extent based on window dimensions
+    zoomScale() {
+      return this.scaleLinearForZoomScale(this.shortestWindowSideLength);
+    },
+    // calculates smaller minimum zoom scale if window dimensions fall within or below threshold (enables pinch to zoom out on touch)
+    minZoomScale() {
+      return this.shortestWindowSideLength <= this.scaleParameters.domain[1]
+        ? this.zoomScale * this.scaleParameters.minReductionFactor
+        : this.zoomScale;
+    },
+    // calculates translate extent for zoom behavior
+    translateExtent() {
+      return [
+        [-this.windowWidth / 1.5, -this.windowHeight / 1.5],
+        [this.flowchartDimensions.width + this.windowWidth / 1.5, this.flowchartDimensions.height + this.windowHeight / 1.5]
+      ]
     }
   },
 
   methods: {
     // initialize D3 zoom
     initZoom(element) {
+      // linear scale to map window dimensions to min/max scale thresholds
+      this.scaleLinearForZoomScale = d3.scaleLinear().domain(this.scaleParameters.domain).range(this.scaleParameters.range).clamp(true);
+
       this.flowchartElement = element;
+      this.flowchartDimensions = element.getBoundingClientRect();
       this.selectedFlowchartContainer = d3.select('#flowchart');
 
-      const chartDimensions = element.getBoundingClientRect();
-
       this.zoomBehavior = d3.zoom()
-        .translateExtent([
-          [-window.innerWidth / 2, -window.innerHeight / 2],
-          [chartDimensions.width + window.innerWidth / 2, chartDimensions.height + window.innerHeight / 2]
-        ])
-        .scaleExtent([1, 1])
+        .scaleExtent([this.minZoomScale, this.zoomScale])
+        .translateExtent(this.translateExtent)
         .interpolate(d3.interpolateZoom.rho(0))
         .clickDistance([16]);
+      
+      this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, this.zoomScale);
 
       this.zoomBehavior.on('zoom', event => {
         this.selectedFlowchartContainer.select('svg g').attr('transform', event.transform.toString());
@@ -196,9 +234,6 @@ export default {
           }
           this.toggleChapterList(true);
           this.toggleIntroPanel(true);
-
-          // DOES NOT WORK: log this as the start of a pan interaction
-          // this.logEvent('input_panstart');
         }
       });
 
@@ -214,22 +249,16 @@ export default {
 
         const k = this.selectedFlowchartContainer.property('__zoom').k || 1;
 
-        if (event.ctrlKey) {
-          // const nextZoom = k * Math.pow(2, -event.deltaY * 0.01);
-          // this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, nextZoom, pointer(event));
-        } else {
-          this.zoomBehavior.translateBy(
-            this.selectedFlowchartContainer,
-            -(event.deltaX / k),
-            -(event.deltaY / k)
-          );
-        }
+        this.zoomBehavior.translateBy(
+          this.selectedFlowchartContainer,
+          -(event.deltaX / k),
+          -(event.deltaY / k)
+        );
 
         this.stopPlayback();
         this.toggleChapterList(true);
         this.toggleIntroPanel(true);
       });
-      // .on('wheel', event => event.preventDefault())
 
       this.collectFlowchartNodes();
     },
@@ -360,35 +389,37 @@ export default {
     moveToNode(item) {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
-        x: itemPosition.x + itemPosition.width / 2 - (this.introPanelVisible ? this.introPanelWidth / 2 - this.horizontalCenterOffset : 0),
+        x: itemPosition.x + itemPosition.width / 2 - (
+          this.introPanelVisible && this.windowWidth > this.fullWidthIntroPanelThreshold
+            ? this.introPanelWidth / 2 - this.horizontalCenterOffset
+            : 0
+        ),
         y: itemPosition.y + itemPosition.height / 2 + window.innerHeight * 0.05
       };
 
       const currentTransform = d3.zoomTransform(this.flowchartElement);
       const currentCoords = {
-        x: -currentTransform.x + window.innerWidth / 2,
-        y: -currentTransform.y + window.innerHeight / 2
+        x: -currentTransform.x + this.windowWidth / 2,
+        y: -currentTransform.y + this.windowHeight / 2
       };
 
       const travelDistance = Math.sqrt(
         Math.pow(currentCoords.x - destinationCoords.x, 2) + Math.pow(currentCoords.y - destinationCoords.y, 2)
       );
-
-      // TODO: store somewhere else
-      const travelThreshold = Math.min(
-        Math.min(window.innerWidth, window.innerHeight) * this.movementParameters.screenSizeFactor,
-        this.movementParameters.maxTravelThreshold
-      );
       
       // omit movement if playback is active and distance from viewport center to destination node falls below threshold
-      if (!this.playbackActive || travelDistance > travelThreshold) {
+      if (!this.playbackActive || travelDistance > this.travelThreshold) {
         this.zoomBehavior.translateTo(
           this.selectedFlowchartContainer
             .transition('move')
             .ease(d3.easeExpOut)
             // duration dependent on travel distance between min and max thresholds
-            .duration(Math.min(
-              Math.max(travelDistance * this.movementParameters.distanceFactor, this.movementParameters.minDuration),
+            .duration(
+              Math.min(
+                Math.max(
+                  travelDistance * this.movementParameters.distanceFactor,
+                  this.movementParameters.minDuration
+                ),
               this.movementParameters.maxDuration
             )),
           destinationCoords.x,
@@ -541,10 +572,13 @@ export default {
     },
 
     // stop playback
-    stopPlayback() {
+    stopPlayback(openChapterList = false) {
       this.$refs.media.pause();
       this.playbackActive = false;
-      // this.mediaBuffering = false;
+      
+      if (openChapterList) {
+        this.toggleChapterList();
+      }
     },
 
     // toggle playback
@@ -658,6 +692,21 @@ export default {
   },
 
   mounted() {
+    // set window dimension and zoom behavior properties upon window resize
+    window.addEventListener('resize', () => {
+      this.windowWidth = window.innerWidth;
+      this.windowHeight = window.innerHeight;
+      this.shortestWindowSideLength = Math.min(window.innerWidth, window.innerHeight);
+
+      this.zoomBehavior.scaleExtent([this.minZoomScale, this.zoomScale]);
+      this.zoomBehavior.translateExtent(this.translateExtent);
+
+      // scale to new default/maximum zoom scale
+      this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, this.zoomScale);
+    });
+
+    document.addEventListener('touchstart', () => {}, true);
+
     // make spacebar trigger togglePlayback
     document.addEventListener('keydown', event => {
       if (event.key === ' ' || event.key === 'Space') {
@@ -691,8 +740,6 @@ export default {
 
       this.logEvent('input_click', { eventTarget: selectors.toString() });
     });
-
-    document.addEventListener('touchstart', () => {}, true);
   }
 }
 </script>
