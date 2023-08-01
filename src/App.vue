@@ -246,7 +246,8 @@ export default {
           element: nodeElement,
           type: nodeProperties[1],
           label: this.truncatedLabelFromTextContent(nodeElement.textContent),
-          outgoing: []
+          outgoing: [],
+          incoming: []
         };
       });
 
@@ -262,12 +263,20 @@ export default {
           edge: edgeElement,
           node: this.flowchartNodes[edgeTo]
         });
+        this.flowchartNodes[edgeTo].incoming.push({
+          edge: edgeElement,
+          node: this.flowchartNodes[edgeFrom]
+        });
 
-        // if edge is bidirectional, additionally add the same edge in reverse to the destination node
+        // if edge is bidirectional, additionally add the same edge in reverse to the destination/origin node
         if (bidirectionalEdge) {
           this.flowchartNodes[edgeTo].outgoing.push({
             edge: edgeElement,
             node: this.flowchartNodes[edgeFrom]
+          });
+          this.flowchartNodes[edgeFrom].incoming.push({
+            edge: edgeElement,
+            node: this.flowchartNodes[edgeTo]
           });
         }
       });
@@ -321,6 +330,17 @@ export default {
               // vueInstance.stopPlayback();
               vueInstance.setCurrentNodeId(nodeId);
             }
+          } else if (this.classList.contains('teased')) {
+            // if teased node is clicked, trigger the pulse animation for all incoming nodes
+            node.incoming.forEach(incomingNode => {
+              const nodeElement = incomingNode.node.element;
+
+              if (nodeElement.classList.contains('revealed')) {
+                nodeElement.classList.remove('pulse');
+                void nodeElement.getBBox(); // trigger reflow
+                nodeElement.classList.add('pulse');
+              }
+            });
           }
 
           vueInstance.logEvent('input_clickNode');
@@ -706,7 +726,7 @@ body {
     background: transparent;
   }
 
-  svg:first-of-type {
+  svg {
     opacity: 0;
     visibility: hidden;
     cursor: default;
@@ -720,6 +740,12 @@ body {
     // nodes
     g[id^=n] {
       opacity: 0;
+      // transform-box: fill-box;
+      // transform-origin: center center;
+
+      &.pulse {
+        animation: pulse 0.6s 1 forwards ease-in-out;
+      }
 
       path, text, rect {
         transition: all 0.075s var(--transition-timing);
@@ -905,6 +931,16 @@ body {
         }
       }
     }
+  }
+}
+
+@keyframes pulse {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+
+  25%, 75% {
+    opacity: 0.35;
   }
 }
 </style>
