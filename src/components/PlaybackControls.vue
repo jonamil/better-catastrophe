@@ -8,7 +8,7 @@
       :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
       @click="$emit('togglePlayback')"
     />
-    <div class="chapters" :class="{ shadow: !introPanelVisible, playing: playbackActive, open: chapterListVisible }">
+    <div ref="chapters" class="chapters" :class="{ shadow: !introPanelVisible, playing: playbackActive, open: chapterListVisible }">
       <div
         class="preview"
         :title="chapterListVisible ? 'Close narration log' : 'Open narration log'"
@@ -79,6 +79,12 @@ export default {
   ],
 
   watch: {
+    // hacky way to keep the chapter list’s background blur active on Safari when controls are full-width
+    playbackActive: function() {
+      if (this.playbackActive === false && this.$refs.chapters.style['-webkit-backdrop-filter'] !== undefined) {
+        this.$refs.chapters.style['-webkit-backdrop-filter'] = `blur(${ 16 + Math.random() / 100 }px)`;
+      }
+    },
     chapterListVisible: function() {
       if (this.chapterListVisible) {
         this.$refs.chapterList.querySelector('li.active').scrollIntoView({
@@ -303,7 +309,7 @@ export default {
       .preview {
         box-sizing: border-box;
         width: calc(100% - 32px);
-        min-width: 352px;
+        min-width: 326px;
       }
 
       ul {
