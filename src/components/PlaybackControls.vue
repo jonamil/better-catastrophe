@@ -191,6 +191,8 @@ export default {
       }
 
       span {
+        width: 100%;
+        margin-right: 24px;
         padding-bottom: 1px;
       }
     }
@@ -309,7 +311,11 @@ export default {
       .preview {
         box-sizing: border-box;
         width: calc(100% - 32px);
-        min-width: 326px;
+
+        span {
+          -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 90%);
+          mask-image: linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 90%);
+        }
       }
 
       ul {
