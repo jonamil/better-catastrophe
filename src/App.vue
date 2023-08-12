@@ -122,7 +122,7 @@ export default {
       fullWidthIntroPanelThreshold: 600,
       horizontalCenterOffset: 24,
       
-      loggingUrl: '/bettercatastrophe/log.php',
+      loggingUrl: './log.php',
       formUrl: 'https://tally.so/r/wvr1AD'
     }
   },
