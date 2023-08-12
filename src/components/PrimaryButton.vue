@@ -51,10 +51,11 @@ button {
   &.disabled {
     border-color: rgba(255,255,255,0.25);
     background-color: var(--background-color);
+    cursor: not-allowed;
 
     &:hover {
       transform: none;
-      cursor: default;
+      cursor: not-allowed;
     }
   }
 
