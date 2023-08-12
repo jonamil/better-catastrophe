@@ -96,6 +96,8 @@ export default {
       introPanelVisible: true,
       mousePressedAboveNode: false,
 
+      teasedClickAttempts: 0,
+
       zoomBehavior: undefined,
       selectedFlowchartContainer: undefined,
 
@@ -370,6 +372,11 @@ export default {
                 nodeElement.classList.add('pulse');
               }
             });
+
+            vueInstance.teasedClickAttempts++;
+            if (vueInstance.teasedClickAttempts >= 3) {
+              alert('In order to reveal this item of the flowchart, please select any item pointing here first.');
+            }
           }
 
           vueInstance.logEvent('input_clickNode');
