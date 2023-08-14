@@ -18,7 +18,7 @@
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
     <IntroPanel
-      :introPanelVisible="introPanelVisible"
+      :visible="introPanelVisible"
       :formUrl="formUrl"
       @toggleIntroPanel="toggleIntroPanel()"
     />
@@ -775,9 +775,9 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  -webkit-user-select: none;
+  user-select: none;
 
-  *::selection {
-    background: transparent;
   }
 
   svg {
@@ -824,6 +824,10 @@ body {
       // all visible nodes (teased and revealed)
       &.teased, &.revealed {
         opacity: 1;
+      }
+
+      &.teased:not(.revealed) {
+        cursor: not-allowed;
       }
 
       // revealed nodes (interactive and text visible)

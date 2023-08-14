@@ -5,7 +5,7 @@
     title="Open introduction"
     @click="$emit('toggleIntroPanel')"
   />
-  <div class="intro" :class="{ visible: introPanelVisible }">
+  <div class="intro" :class="{ visible: visible }">
     <div class="outer">
       <div class="inner">
         <h1>I Want A Better Catastrophe</h1>
@@ -50,7 +50,7 @@ export default {
   },
 
   props: {
-    introPanelVisible: Boolean,
+    visible: Boolean,
     formUrl: String
   },
 
@@ -271,7 +271,7 @@ button.open {
 
 @media (max-height: 650px) {
   .intro:before {
-    height: 35vh;
+    height: 33vh;
   }
   
   .intro:after {
@@ -279,7 +279,7 @@ button.open {
   }
 
   .intro .inner {
-    padding-bottom: 128px;
+    padding-bottom: 33vh;
   }
 }
 </style>

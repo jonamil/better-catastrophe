@@ -109,14 +109,12 @@ export default {
   width: 460px;
   line-height: 20px;
   pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 
   > * {
     vertical-align: bottom;
     pointer-events: all;
-  }
-
-  *::selection {
-    background: transparent;
   }
 
   button.playback {
