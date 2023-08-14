@@ -1,10 +1,14 @@
 <template>
   <main>
-    <div id="flowchart">
+    <div
+      ref="container"
+      class="flowchart"
+      @mousedown="toggleIntroPanel(true)"
+    >
       <InlineSvg
         :src="flowchartAsset"
         :class="{ ready: flowchartElement }"
-        @loaded="initZoom($event)"
+        @loaded="flowchartReady($event)"
       />
     </div>
     <audio
@@ -57,7 +61,7 @@ import flowchartAsset from '@/assets/flowchart.svg';
 import narrationTimestamps from '@/data/timestamps.json';
 
 import InlineSvg from 'vue-inline-svg';
-import * as d3 from 'd3';
+import { scaleLinear, easeExpOut } from 'd3';
 
 export default {
   name: 'App',
@@ -71,59 +75,75 @@ export default {
 
   data() {
     return {
+      // unique session ID
       sessionId: undefined,
 
+      // imported flowchart asset and container/svg elements
       flowchartAsset,
+      flowchartContainer: undefined,
       flowchartElement: undefined,
-      flowchartDimensions: {},
+      
+      // related to flowchart nodes
       flowchartNodes: {},
-
       currentNodeId: 'n001',
       teasedItems: [],
       revealedItems: [],
 
+      // related to flowchart narration/timestamps
       narrationTimestamps,
       listenedTimestampIndexes: [],
-
       narrationChapters: [],
       listenedChapterIndexes: [],
 
+      // state of playback
       playbackActive: false,
       playbackPosition: 0,
       mediaBuffering: false,
 
+      // state of control UI
       chapterListVisible: false,
       introPanelVisible: true,
-      mousePressedAboveNode: false,
 
+      // count how many times teased nodes have been attempted to be clicked
       teasedClickAttempts: 0,
 
-      zoomBehavior: undefined,
-      selectedFlowchartContainer: undefined,
-
+      // window dimensions
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
       shortestWindowSideLength: Math.min(window.innerWidth, window.innerHeight),
 
+      // flowchart dimensions
+      flowchartWidth: 0,
+      flowchartHeight: 0,
+      flowchartScale: 1,
+
+      // flowchart scaling parameters
       scaleParameters: {
         domain: [300, 600],
         range: [0.85, 1],
         minReductionFactor: 0.75
       },
-      scaleLinearForZoomScale: undefined,
+      scaleFromWindowSideLength: undefined,
 
-      movementParameters: {
+      // coordinates stored during panning/dragging
+      panCoordinates: undefined,
+
+      // parameters for movement/transitions to nodes
+      transitionParameters: {
         screenSizeFactor: 0.15,
         maxTravelThreshold: 256,
         distanceFactor: 1.5,
-        minDuration: 333,
+        minDuration: 500,
         maxDuration: 1000
       },
       
+      // fixed pixel values
       introPanelWidth: 416,
       fullWidthIntroPanelThreshold: 600,
       horizontalCenterOffset: 24,
+      // verticalCenterOffset
       
+      // logging and feedback form URLs
       loggingUrl: './log.php',
       formUrl: 'https://tally.so/r/wvr1AD'
     }
@@ -180,87 +200,92 @@ export default {
     feedbackPromptVisible() {
       return this.revealedItems.length >= 64;
     },
+    // calculates scale factor for flowchart element extent based on window dimensions
+    zoomScale() {
+      return this.scaleFromWindowSideLength(this.shortestWindowSideLength);
+    },
     // calculates travel distance threshold below which no movement happens when a new node becomes active during narration
     travelThreshold() {
       return Math.min(
-        this.shortestWindowSideLength * this.movementParameters.screenSizeFactor,
-        this.movementParameters.maxTravelThreshold
+        this.shortestWindowSideLength * this.transitionParameters.screenSizeFactor,
+        this.transitionParameters.maxTravelThreshold
       );
-    },
-    // calculates zoom behavior’s scale extent based on window dimensions
-    zoomScale() {
-      return this.scaleLinearForZoomScale(this.shortestWindowSideLength);
-    },
-    // calculates smaller minimum zoom scale if window dimensions fall within or below threshold (enables pinch to zoom out on touch)
-    minZoomScale() {
-      return this.shortestWindowSideLength <= this.scaleParameters.domain[1]
-        ? this.zoomScale * this.scaleParameters.minReductionFactor
-        : this.zoomScale;
-    },
-    // calculates translate extent for zoom behavior
-    translateExtent() {
-      return [
-        [-this.windowWidth / 1.5, -this.windowHeight / 1.5],
-        [this.flowchartDimensions.width + this.windowWidth / 1.5, this.flowchartDimensions.height + this.windowHeight / 1.5]
-      ]
     }
   },
 
   methods: {
-    // initialize D3 zoom
-    initZoom(element) {
-      // linear scale to map window dimensions to min/max scale thresholds
-      this.scaleLinearForZoomScale = d3.scaleLinear().domain(this.scaleParameters.domain).range(this.scaleParameters.range).clamp(true);
-
+    // flowchart inline SVG loaded
+    flowchartReady(element) {
+      this.flowchartContainer = this.$refs.container;
       this.flowchartElement = element;
-      this.flowchartDimensions = element.getBoundingClientRect();
-      this.selectedFlowchartContainer = d3.select('#flowchart');
 
-      this.zoomBehavior = d3.zoom()
-        .scaleExtent([this.minZoomScale, this.zoomScale])
-        .translateExtent(this.translateExtent)
-        .interpolate(d3.interpolateZoom.rho(0))
-        .clickDistance([16]);
-      
-      this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, this.zoomScale);
+      // store initial dimensions of flowchart svg elements for scaling
+      const boundingClientRect = element.getBoundingClientRect();
+      this.flowchartWidth = boundingClientRect.width;
+      this.flowchartHeight = boundingClientRect.height;
 
-      this.zoomBehavior.on('zoom', event => {
-        this.selectedFlowchartContainer.select('svg g').attr('transform', event.transform.toString());
+      // set window dimension properties and scaled flowchart width and height upon window resize
+      window.addEventListener('resize', () => {
+        this.windowWidth = window.innerWidth;
+        this.windowHeight = window.innerHeight;
+        this.shortestWindowSideLength = Math.min(window.innerWidth, window.innerHeight);
+
+        this.flowchartElement.setAttribute('width', this.flowchartWidth * this.zoomScale);
+        this.flowchartElement.setAttribute('height', this.flowchartHeight * this.zoomScale);
       });
 
-      this.zoomBehavior.on('start', event => {
-        // stop playback and hide chapter list when movement has been triggered by user interaction
-        if (event.sourceEvent) {
-          if (!this.mousePressedAboveNode) {
-            this.stopPlayback();
-          }
+      // dispatch resize event to initially set scaled flowchart width and height
+      window.dispatchEvent(new Event('resize'));
+
+      // stop playback and hide chapter list / intro panel upon user-initiated scrolling
+      ['wheel', 'touchmove'].forEach(eventName => {
+        this.flowchartContainer.addEventListener(eventName, () => {
+          this.stopPlayback();
           this.toggleChapterList(true);
           this.toggleIntroPanel(true);
+        });
+      });
+
+      // panning/scrolling of flowchart via click-and-drag
+      this.flowchartContainer.addEventListener('mousedown', event => {
+        // only start panning if drag was not initiated above visible node
+        if (!event.target.closest('g[id^=n].teased, g[id^=n].revealed')) {
+          this.stopPlayback();
+          this.flowchartContainer.classList.add('panning');
+
+          this.panCoordinates = {
+            xScroll: this.flowchartContainer.scrollLeft,
+            yScroll: this.flowchartContainer.scrollTop,
+            xPointer: event.clientX,
+            yPointer: event.clientY
+          };
+
+          this.flowchartContainer.addEventListener('mousemove', mousemoveHandler);
+          this.flowchartContainer.addEventListener('mouseup', mouseupHandler);
         }
-      });
 
-      this.zoomBehavior.on('end', () => {
-        // set mousePressedAboveNode back to false when movement ends (in case it was true)
-        this.mousePressedAboveNode = false;
-      });
-
-      this.selectedFlowchartContainer.call(this.zoomBehavior);
-
-      this.selectedFlowchartContainer.on('wheel.zoom', event => {
         event.preventDefault();
-
-        const k = this.selectedFlowchartContainer.property('__zoom').k || 1;
-
-        this.zoomBehavior.translateBy(
-          this.selectedFlowchartContainer,
-          -(event.deltaX / k),
-          -(event.deltaY / k)
-        );
-
-        this.stopPlayback();
-        this.toggleChapterList(true);
-        this.toggleIntroPanel(true);
       });
+
+      // scroll flowchart container based on delta between start of drag and current pointer position
+      const mousemoveHandler = event => {
+        const xDelta = event.clientX - this.panCoordinates.xPointer;
+        const yDelta = event.clientY - this.panCoordinates.yPointer;
+
+        this.flowchartContainer.scrollTo({
+          left: this.panCoordinates.xScroll - xDelta,
+          top: this.panCoordinates.yScroll - yDelta,
+          behavior: 'instant'
+        });
+      };
+
+      // end of panning/dragging
+      const mouseupHandler = () => {
+        this.panCoordinates = undefined;
+        this.flowchartContainer.classList.remove('panning');
+        this.flowchartContainer.removeEventListener('mousemove', mousemoveHandler);
+        this.flowchartContainer.removeEventListener('mouseup', mouseupHandler);
+      };
 
       this.collectFlowchartNodes();
     },
@@ -358,7 +383,6 @@ export default {
             if (vueInstance.playbackActive && nodeId !== vueInstance.currentNodeId) {
               vueInstance.jumpNarrationToNode(nodeId);
             } else {
-              // vueInstance.stopPlayback();
               vueInstance.setCurrentNodeId(nodeId);
             }
           } else if (this.classList.contains('teased')) {
@@ -381,60 +405,70 @@ export default {
 
           vueInstance.logEvent('input_clickNode');
         });
-
-        // upon mousedowning revealed node, set mousePressedAboveNode property to true
-        // to prevent playback from being stopped 
-        node.element.addEventListener('mousedown', function() {
-          if (vueInstance.revealedItems.indexOf(node.element) !== -1) {
-            vueInstance.mousePressedAboveNode = true;
-          }
-        });
       });
     },
 
-    // pan the flowchart to center on an item
+    // scroll the flowchart to center on an item
     moveToNode(item) {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
-        x: itemPosition.x + itemPosition.width / 2 - (
+        x: (itemPosition.x + itemPosition.width / 2) * this.zoomScale - (
           this.introPanelVisible && this.windowWidth > this.fullWidthIntroPanelThreshold
             ? this.introPanelWidth / 2 - this.horizontalCenterOffset
             : 0
         ),
-        y: itemPosition.y + itemPosition.height / 2 + window.innerHeight * 0.05
+        y: (itemPosition.y + itemPosition.height / 2) * this.zoomScale + this.windowHeight * 0.05
       };
 
-      const currentTransform = d3.zoomTransform(this.flowchartElement);
       const currentCoords = {
-        x: -currentTransform.x + this.windowWidth / 2,
-        y: -currentTransform.y + this.windowHeight / 2
+        x: this.flowchartContainer.scrollLeft,
+        y: this.flowchartContainer.scrollTop
       };
 
       const travelDistance = Math.sqrt(
         Math.pow(currentCoords.x - destinationCoords.x, 2) + Math.pow(currentCoords.y - destinationCoords.y, 2)
       );
-      
+
       // omit movement if playback is active and distance from viewport center to destination node falls below threshold
       if (!this.playbackActive || travelDistance > this.travelThreshold) {
-        this.zoomBehavior.translateTo(
-          this.selectedFlowchartContainer
-            .transition('move')
-            .ease(d3.easeExpOut)
-            // duration dependent on travel distance between min and max thresholds
-            .duration(
-              Math.min(
-                Math.max(
-                  travelDistance * this.movementParameters.distanceFactor,
-                  this.movementParameters.minDuration
-                ),
-              this.movementParameters.maxDuration
-            )),
-          destinationCoords.x,
-          destinationCoords.y
+        const duration = Math.min(
+          Math.max(
+            travelDistance * this.transitionParameters.distanceFactor,
+            this.transitionParameters.minDuration
+          ),
+          this.transitionParameters.maxDuration
         );
+
+        this.smoothScroll(destinationCoords.x, destinationCoords.y, duration);
       }
 
       this.updateFlowchartAppearance();
+    },
+
+    // smooth scroll to coordinated using custom duration and easing
+    smoothScroll(xEnd, yEnd, duration) {
+      const time = Date.now();
+      const xStart = this.flowchartContainer.scrollLeft;
+      const yStart = this.flowchartContainer.scrollTop;
+
+      const step = () => {
+        const elapsed = Date.now() - time;
+        const scrolling = elapsed < duration;
+        const x = scrolling ? xStart + (xEnd - xStart) * easeExpOut(elapsed / duration) : xEnd;
+        const y = scrolling ? yStart + (yEnd - yStart) * easeExpOut(elapsed / duration) : yEnd;
+
+        if (scrolling) {
+          requestAnimationFrame(step);
+        }
+
+        this.flowchartContainer.scrollTo({
+          left: x,
+          top: y,
+          behavior: 'instant'
+        });
+      }
+
+      step();
     },
 
     // add node element to revealedItems array
@@ -557,7 +591,6 @@ export default {
 
       this.moveToNode(this.currentNode);
       this.toggleChapterList(true);
-      // this.toggleIntroPanel(true);
     },
 
     // start playback
@@ -699,22 +732,12 @@ export default {
 
     // append session ID to form URL
     this.formUrl = this.formUrl + '?id=' + this.sessionId;
+
+    // d3 scaleLinear method to map window dimensions to min/max scale thresholds
+    this.scaleFromWindowSideLength = scaleLinear(this.scaleParameters.domain, this.scaleParameters.range).clamp(true);
   },
 
   mounted() {
-    // set window dimension and zoom behavior properties upon window resize
-    window.addEventListener('resize', () => {
-      this.windowWidth = window.innerWidth;
-      this.windowHeight = window.innerHeight;
-      this.shortestWindowSideLength = Math.min(window.innerWidth, window.innerHeight);
-
-      this.zoomBehavior.scaleExtent([this.minZoomScale, this.zoomScale]);
-      this.zoomBehavior.translateExtent(this.translateExtent);
-
-      // scale to new default/maximum zoom scale
-      this.zoomBehavior.scaleTo(this.selectedFlowchartContainer, this.zoomScale);
-    });
-
     document.addEventListener('touchstart', () => {}, true);
 
     // make spacebar trigger togglePlayback
@@ -771,22 +794,34 @@ body {
   -webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 
-#flowchart {
+.flowchart {
   position: absolute;
-  overflow: hidden;
+  overflow: auto;
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
+  cursor: grab;
   -webkit-user-select: none;
   user-select: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
+  &::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+  }
+
+  &.panning {
+    cursor: grabbing;
   }
 
   svg {
     opacity: 0;
     visibility: hidden;
-    cursor: default;
+    margin: 50vh 50vw;
+    // cursor: default;
     transition: opacity 0.25s var(--transition-timing), visibility 0.25s var(--transition-timing);
 
     &.ready {
@@ -797,8 +832,6 @@ body {
     // nodes
     g[id^=n] {
       opacity: 0;
-      // transform-box: fill-box;
-      // transform-origin: center center;
 
       &.pulse {
         animation: pulse 0.6s 1 forwards ease-in-out;
