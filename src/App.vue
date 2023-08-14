@@ -687,6 +687,9 @@ export default {
     },
     chapterListVisible: function() {
       this.logEvent('update_chapterListVisible');
+    },
+    introPanelVisible: function() {
+      this.logEvent('update_introPanelVisible');
     }
   },
 
