@@ -905,6 +905,11 @@ body {
           rect {
             fill: transparent;
           }
+
+          path {
+            opacity: 1;
+            stroke: #C9C9C9;
+          }
         }
 
         &:hover {
@@ -916,6 +921,13 @@ body {
 
           text {
             fill: #fff;
+          }
+
+          &[id$=label] {
+            path {
+              opacity: 1;
+              stroke: #fff;
+            }
           }
         }
       }
@@ -934,6 +946,13 @@ body {
         &[id$=chapter], &[id$=question] {
           path {
             fill: rgba(var(--accent-color), 0.25);
+          }
+        }
+
+        &[id$=label] {
+          path {
+            opacity: 1;
+            stroke: rgb(var(--accent-color));
           }
         }
 
@@ -956,6 +975,13 @@ body {
           &[id$=definition], &[id$=collection] {
             path:first-of-type {
               stroke: transparent;
+            }
+          }
+
+          &[id$=label] {
+            path {
+              opacity: 1;
+              stroke: rgb(var(--accent-color-hover));
             }
           }
         }
@@ -987,6 +1013,10 @@ body {
 
           rect {
             fill: rgb(var(--accent-color));
+          }
+
+          path {
+            stroke: #fff;
           }
         }
       }
