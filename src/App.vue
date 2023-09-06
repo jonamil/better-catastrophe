@@ -24,6 +24,7 @@
     <IntroPanel
       :visible="introPanelVisible"
       :formUrl="formUrl"
+      @togglePlayback="togglePlayback()"
       @toggleIntroPanel="toggleIntroPanel()"
     />
     <PlaybackControls

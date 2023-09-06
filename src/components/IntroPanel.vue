@@ -11,7 +11,7 @@
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
         <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
-        <img src="@/assets/modes.svg" />
+        <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
         <h3>Background</h3>
         <p>Use the button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe”</a>. This interactive online version uses an experimental interface that was created in an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
         <h3>Feedback</h3>
@@ -55,6 +55,7 @@ export default {
   },
 
   emits: [
+    'togglePlayback',
     'toggleIntroPanel'
   ]
 }
