@@ -1,9 +1,11 @@
 :root {
   --background-color: #282828;
+  --intro-background-color: #3E3E3E;
   --teased-color: #171717;
   --accent-color: 255,64,86;
   --accent-color-hover: 255,115,131;
   --accent-color-hover-ui: 237,98,107;
+  --focus-color: #4EA0F2;
   --transition-duration: 0.1s;
   --transition-duration-long: 0.3s;
   --transition-timing: ease-in-out;

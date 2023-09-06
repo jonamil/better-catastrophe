@@ -83,7 +83,7 @@ button.open {
   left: 0;
   width: 0;
   color: rgba(255,255,255,0.9);
-  background: #3E3E3E;
+  background: var(--intro-background-color);
   transition: width var(--transition-duration-long) var(--transition-timing);
 
   &.visible {
@@ -257,6 +257,10 @@ button.open {
     @at-root .intro.visible button.close {
       opacity: 1;
     }
+  }
+
+  *:focus-visible {
+    box-shadow: 0 0 0 2px var(--intro-background-color), 0 0 0 4px var(--focus-color) !important;
   }
 }
 

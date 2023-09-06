@@ -1058,6 +1058,14 @@ body {
   }
 }
 
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-color), 0 0 0 4px var(--focus-color) !important;
+}
+
 @keyframes pulse {
   0%, 50%, 100% {
     opacity: 1;

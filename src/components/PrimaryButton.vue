@@ -37,7 +37,7 @@ button {
   background-color: #777;
   cursor: pointer;
   transition-property: opacity, visibility, border, background-color, transform, box-shadow;
-  transition-duration: var(--transition-duration), var(--transition-duration), var(--transition-duration), var(--transition-duration), var(--transition-duration), var(--transition-duration-long);
+  transition-duration: var(--transition-duration);
   transition-timing-function: var(--transition-timing);
 
   &:hover {
