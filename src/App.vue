@@ -3,7 +3,7 @@
     <div
       ref="container"
       class="flowchart"
-      @mousedown="toggleIntroPanel(true)"
+      @mousedown="hideChapterListAndIntroPanel()"
     >
       <InlineSvg
         :src="flowchartAsset"
@@ -242,8 +242,7 @@ export default {
       ['wheel', 'touchmove'].forEach(eventName => {
         this.flowchartContainer.addEventListener(eventName, () => {
           this.stopPlayback();
-          this.toggleChapterList(true);
-          this.toggleIntroPanel(true);
+          this.hideChapterListAndIntroPanel();
         });
       });
 
@@ -596,8 +595,7 @@ export default {
 
     // start playback
     startPlayback(nodeIdAlreadySet = false) {
-      this.toggleChapterList(true);
-      this.toggleIntroPanel(true);
+      this.hideChapterListAndIntroPanel();
 
       if (!nodeIdAlreadySet) {
         this.setCurrentNodeId(this.currentNarrationNodeId);
@@ -646,6 +644,12 @@ export default {
         this.stopPlayback();
         this.toggleChapterList(true);
       }
+    },
+
+    // hide both chapter list and intro panel
+    hideChapterListAndIntroPanel() {
+      this.toggleChapterList(true);
+      this.toggleIntroPanel(true);
     },
 
     // create trimmed and truncated label from textContent of node element
