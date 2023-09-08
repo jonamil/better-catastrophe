@@ -13,6 +13,7 @@
     </div>
     <audio
       ref="media"
+      @loadedmetadata="playbackDuration = $event.target.duration"
       @timeupdate="playbackPosition = $event.target.currentTime"
       @stalled="mediaBuffering = true"
       @loadeddata="mediaBuffering = false"
@@ -36,6 +37,7 @@
       :listenedChapterIndexes="listenedChapterIndexes"
       :revealedItems="revealedItems"
       :playbackActive="playbackActive"
+      :playbackProgress="playbackProgress"
       :mediaBuffering="mediaBuffering"
       :jumpActionVisible="jumpActionVisible"
       :jumpActionAvailable="jumpActionAvailable"
@@ -97,8 +99,9 @@ export default {
       listenedChapterIndexes: [],
 
       // state of playback
-      playbackActive: false,
+      playbackDuration: 1,
       playbackPosition: 0,
+      playbackActive: false,
       mediaBuffering: false,
 
       // state of control UI
@@ -146,7 +149,6 @@ export default {
       
       // logging and feedback form URLs
       loggingUrl: './log.php',
-      formUrl: 'https://tally.so/r/wvr1AD'
       formUrl: 'https://tally.so/r/wvr1AD',
 
       // wakeLock support and reference
@@ -156,6 +158,14 @@ export default {
   },
 
   computed: {
+    // playback progress as percentage (with minimum value for initial progress bar visibility)
+    playbackProgress() {
+      if (this.playbackPosition !== 0) {
+        return Math.max(Math.round(this.playbackPosition / this.playbackDuration * 1000) / 1000, 0.015);
+      } else {
+        return 0;
+      }
+    },
     // current node object
     currentNode() {
       return this.flowchartNodes[this.currentNodeId];

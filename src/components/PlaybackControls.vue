@@ -1,10 +1,11 @@
 <template>
   <div class="controls">
-    <PrimaryButton
+    <PlayButton
       class="playback"
       :class="{ playing: playbackActive }"
       :state="currentNodeId === currentNarrationNodeId ? 'highlighted' : ''"
       :icon="mediaBuffering ? 'buffering' : (playbackActive ? 'pause' : 'play')"
+      :progress="playbackProgress"
       :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
       @click="$emit('togglePlayback')"
     />
@@ -40,6 +41,7 @@
       :state="jumpActionAvailable ? 'highlighted' : 'disabled'"
       icon="jump"
       :title="jumpActionAvailable ? 'Resume narration from selected item' : 'Narration not available for selected item'"
+      :tabindex="!jumpActionAvailable ? -1 : ''"
       @click="$emit('jumpNarrationToNode', currentNodeId)"
     />
   </div>
@@ -47,12 +49,14 @@
 
 <script>
 import PrimaryButton from '@/components/PrimaryButton.vue';
+import PlayButton from '@/components/PlayButton.vue';
 
 export default {
   name: 'PlaybackControls',
 
   components: {
-    PrimaryButton
+    PrimaryButton,
+    PlayButton
   },
 
   props: {
@@ -64,6 +68,7 @@ export default {
     listenedChapterIndexes: Array,
     revealedItems: Array,
     playbackActive: Boolean,
+    playbackProgress: Number,
     mediaBuffering: Boolean,
     jumpActionVisible: Boolean,
     jumpActionAvailable: Boolean,
@@ -117,7 +122,7 @@ export default {
     pointer-events: all;
   }
 
-  button.playback {
+  .playback {
     position: absolute;
     z-index: 1;
     bottom: 0;
