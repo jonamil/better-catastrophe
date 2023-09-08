@@ -3,9 +3,10 @@
     class="open"
     icon="info"
     title="Open introduction"
+    :tabindex="visible ? -1 : ''"
     @click="$emit('toggleIntroPanel')"
   />
-  <div class="intro" :class="{ visible: visible }">
+  <div ref="intro" class="intro" :class="{ visible: visible }">
     <div class="outer">
       <div class="inner">
         <h1>I Want A Better Catastrophe</h1>
@@ -57,7 +58,21 @@ export default {
   emits: [
     'togglePlayback',
     'toggleIntroPanel'
-  ]
+  ],
+
+  watch: {
+    visible: function() {
+      if (this.visible) {
+        this.$refs.intro.querySelectorAll('a, button').forEach(element => {
+          element.removeAttribute('tabindex');
+        });
+      } else {
+        this.$refs.intro.querySelectorAll('a, button').forEach(element => {
+          element.setAttribute('tabindex', -1);
+        });
+      }
+    }
+  }
 }
 </script>
 
@@ -249,7 +264,9 @@ button.open {
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     cursor: pointer;
-    transition: opacity var(--transition-duration-long) var(--transition-timing), transform var(--transition-duration) var(--transition-timing);
+    transition-property: opacity, transform, box-shadow;
+    transition-duration: var(--transition-duration-long), var(--transition-duration), var(--transition-duration);
+    transition-timing-function: var(--transition-timing);
 
     &:hover {
       transform: scale(1.125);
@@ -261,6 +278,8 @@ button.open {
   }
 
   *:focus-visible {
+    position: relative;
+    background: var(--intro-background-color);
     box-shadow: 0 0 0 2px var(--intro-background-color), 0 0 0 4px var(--focus-color) !important;
   }
 }
