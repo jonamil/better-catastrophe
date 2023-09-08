@@ -147,6 +147,11 @@ export default {
       // logging and feedback form URLs
       loggingUrl: './log.php',
       formUrl: 'https://tally.so/r/wvr1AD'
+      formUrl: 'https://tally.so/r/wvr1AD',
+
+      // wakeLock support and reference
+      wakeLockSupported: false,
+      wakeLock: null
     }
   },
 
@@ -608,12 +613,14 @@ export default {
 
       this.$refs.media.play();
       this.playbackActive = true;
+      this.requestWakeLock();
     },
 
     // stop playback
     stopPlayback(openChapterList = false) {
       this.$refs.media.pause();
       this.playbackActive = false;
+      this.releaseWakeLock();
       
       if (openChapterList) {
         this.toggleChapterList();
@@ -662,6 +669,24 @@ export default {
         const words = label.substring(0, 32).split(' ');
         words.pop();
         return words.join(' ') + '…';
+      }
+    },
+
+    // request and release wakeLock if supported
+    async requestWakeLock() {
+      if (this.wakeLockSupported) {
+        try {
+          this.wakeLock = await navigator.wakeLock.request('screen');
+        } catch {
+          // nevermind
+        }
+      }
+    },
+    async releaseWakeLock() {
+      if (this.wakeLockSupported && this.wakeLock) {
+        this.wakeLock.release().then(() => {
+          this.wakeLock = null;
+        })
       }
     },
 
@@ -740,6 +765,11 @@ export default {
 
     // d3 scaleLinear method to map window dimensions to min/max scale thresholds
     this.scaleFromWindowSideLength = scaleLinear(this.scaleParameters.domain, this.scaleParameters.range).clamp(true);
+    
+    // set wakeLockSupported if supported
+    if ('wakeLock' in navigator) {
+      this.wakeLockSupported = true;
+    }
   },
 
   mounted() {
