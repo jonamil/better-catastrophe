@@ -413,7 +413,7 @@ export default {
             });
 
             vueInstance.teasedClickAttempts++;
-            if (vueInstance.teasedClickAttempts >= 3) {
+            if (vueInstance.teasedClickAttempts === 3) {
               alert('In order to reveal this item of the flowchart, please select any item pointing here first.');
             }
           }
