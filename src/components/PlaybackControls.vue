@@ -4,10 +4,10 @@
       class="playback"
       :class="{ playing: playbackActive }"
       :state="currentNodeId === currentNarrationNodeId ? 'highlighted' : ''"
-      :icon="mediaBuffering ? 'buffering' : (playbackActive ? 'pause' : 'play')"
+      :icon="playButtonIcon"
       :progress="playbackProgress"
-      :title="playbackActive ? 'Pause narration playback' : 'Resume narration playback'"
-      @click="$emit('togglePlayback')"
+      :title="playButtonTitle"
+      @click="$emit(exploringDuringPlayback ? 'stopExplorationDuringPlayback' : 'togglePlayback')"
     />
     <div ref="chapters" class="chapters" :class="{ shadow: !introPanelVisible, playing: playbackActive, open: chapterListVisible }">
       <div
@@ -70,6 +70,7 @@ export default {
     playbackActive: Boolean,
     playbackProgress: Number,
     mediaBuffering: Boolean,
+    exploringDuringPlayback: Boolean,
     jumpActionVisible: Boolean,
     jumpActionAvailable: Boolean,
     chapterListVisible: Boolean,
@@ -77,11 +78,37 @@ export default {
   },
 
   emits: [
+    'stopExplorationDuringPlayback',
     'togglePlayback',
     'toggleChapterList',
     'jumpNarrationToChapter',
     'jumpNarrationToNode'
   ],
+
+  computed: {
+    playButtonIcon() {
+      if (this.mediaBuffering) {
+        return 'buffering';
+      } else if (!this.playbackActive) {
+        return 'play';
+      } else if (this.exploringDuringPlayback) {
+        return 'return';
+      } else {
+        return 'pause';
+      }
+    },
+    playButtonTitle() {
+      if (this.mediaBuffering) {
+        return 'Narration audio loading…';
+      } else if (!this.playbackActive) {
+        return 'Resume narration playback';
+      } else if (this.exploringDuringPlayback) {
+        return 'Return to playback location';
+      } else {
+        return 'Pause narration playback';
+      }
+    }
+  },
 
   watch: {
     // hacky way to keep the chapter list’s background blur active on Safari when controls are full-width

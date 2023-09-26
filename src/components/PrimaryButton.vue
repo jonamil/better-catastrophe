@@ -67,6 +67,10 @@ button {
     background-image: url('@/assets/icons/pause.svg');
   }
 
+  &.icon-return {
+    background-image: url('@/assets/icons/return.svg');
+  }
+
   &.icon-jump {
     background-image: url('@/assets/icons/jump.svg');
     transition-property: opacity, visibility, border, background, transform, box-shadow;

@@ -41,10 +41,12 @@
       :playbackActive="playbackActive"
       :playbackProgress="playbackProgress"
       :mediaBuffering="mediaBuffering"
+      :exploringDuringPlayback="exploringDuringPlayback"
       :jumpActionVisible="jumpActionVisible"
       :jumpActionAvailable="jumpActionAvailable"
       :chapterListVisible="chapterListVisible"
       :introPanelVisible="introPanelVisible"
+      @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
       @togglePlayback="togglePlayback()"
       @toggleChapterList="toggleChapterList()"
       @jumpNarrationToChapter="jumpNarrationToChapter($event)"
@@ -105,6 +107,11 @@ export default {
       playbackPosition: 0,
       playbackActive: false,
       mediaBuffering: false,
+
+      // state of exploration during playback
+      exploringDuringPlayback: false,
+      returnToPlaybackTimeout: undefined,
+      returnToPlaybackDelay: 10000,
 
       // state of resumption from local storage
       resumedFromStorage: false,
@@ -264,7 +271,10 @@ export default {
       // stop playback and hide chapter list / intro panel upon user-initiated scrolling
       ['wheel', 'touchmove'].forEach(eventName => {
         this.flowchartContainer.addEventListener(eventName, () => {
-          this.stopPlayback();
+          if (this.playbackActive) {
+            this.startExplorationDuringPlayback();
+          }
+
           this.hideChapterListAndIntroPanel();
         });
       });
@@ -273,7 +283,10 @@ export default {
       this.flowchartContainer.addEventListener('mousedown', event => {
         // only start panning if drag was not initiated above visible node
         if (!event.target.closest('g[id^=n].teased, g[id^=n].revealed')) {
-          this.stopPlayback();
+          if (this.playbackActive) {
+            this.startExplorationDuringPlayback();
+          }
+
           this.flowchartContainer.classList.add('panning');
 
           this.panCoordinates = {
@@ -432,7 +445,7 @@ export default {
     },
 
     // scroll the flowchart to center on an item
-    moveToNode(item) {
+    moveToNode(item, forceMovement = false) {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
         x: (itemPosition.x + itemPosition.width / 2) * this.zoomScale - (
@@ -453,7 +466,7 @@ export default {
       );
 
       // omit movement if playback is active and distance from viewport center to destination node falls below threshold
-      if (!this.playbackActive || travelDistance > this.travelThreshold) {
+      if (forceMovement || !this.playbackActive || travelDistance > this.travelThreshold) {
         const duration = Math.min(
           Math.max(
             travelDistance * this.transitionParameters.distanceFactor,
@@ -612,7 +625,14 @@ export default {
     setCurrentNodeId(nodeId) {
       this.currentNodeId = nodeId;
 
-      this.moveToNode(this.currentNode);
+      // move to the updated (now current) node ID, unless exploration
+      // during playback is active, in which case only refresh appearance
+      if (!this.exploringDuringPlayback) {
+        this.moveToNode(this.currentNode);
+      } else {
+        this.updateFlowchartAppearance();
+      }
+      
       this.toggleChapterList(true);
       this.saveCurrentStateToLocalStorage();
     },
@@ -655,6 +675,7 @@ export default {
     stopPlayback(openChapterList = false) {
       this.$refs.media.pause();
       this.playbackActive = false;
+      this.stopExplorationDuringPlayback();
       this.releaseWakeLock();
       
       if (openChapterList) {
@@ -665,6 +686,24 @@ export default {
     // toggle playback
     togglePlayback() {
       this.playbackActive ? this.stopPlayback() : this.startPlayback();
+    },
+
+    // start exploration during playback and set timeout to return to playback location automatically
+    startExplorationDuringPlayback() {
+      this.exploringDuringPlayback = true;
+      clearTimeout(this.returnToPlaybackTimeout);
+
+      this.returnToPlaybackTimeout = setTimeout(this.stopExplorationDuringPlayback, this.returnToPlaybackDelay);
+    },
+
+    // stop exploration during playback
+    stopExplorationDuringPlayback() {
+      this.exploringDuringPlayback = false;
+      clearTimeout(this.returnToPlaybackTimeout);
+      
+      if (this.playbackActive) {
+        this.moveToNode(this.currentNode, true);
+      }
     },
 
     // toggle visibility of chapter list
