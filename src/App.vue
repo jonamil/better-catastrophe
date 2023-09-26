@@ -155,6 +155,7 @@ export default {
       // verticalCenterOffset
       
       // logging and feedback form URLs
+      loggingEnabled: true,
       loggingUrl: './log.php',
       formUrl: 'https://tally.so/r/wvr1AD',
 
@@ -726,6 +727,10 @@ export default {
 
     // log an event via a post request
     logEvent(eventType, additionalData = {}) {
+      if (!this.loggingEnabled) {
+        return;
+      }
+
       const currentState = {
         nodeId: this.currentNodeId,
         narrationNodeIndex: this.currentNarrationNodeIndex,
@@ -813,6 +818,10 @@ export default {
 
     // append session ID to form URL
     this.formUrl = this.formUrl + '?id=' + this.sessionId;
+
+    if (window.location.search === '?nolog') {
+      this.loggingEnabled = false;
+    }
 
     // d3 scaleLinear method to map window dimensions to min/max scale thresholds
     this.scaleFromWindowSideLength = scaleLinear(this.scaleParameters.domain, this.scaleParameters.range).clamp(true);
