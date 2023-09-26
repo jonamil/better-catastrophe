@@ -25,11 +25,11 @@
           :key="index"
           :class="[
             chapter.type,
-            revealedItems.indexOf(chapter.element) !== -1 ? 'revealed' : '',
+            revealedItems.indexOf(chapter.element.id) !== -1 ? 'revealed' : '',
             listenedChapterIndexes.indexOf(index) !== -1 ? 'listened' : '',
             currentNarrationChapterIndex === index ? 'active' : ''
           ]"
-          @click="revealedItems.indexOf(chapter.element) !== -1 && $emit('jumpNarrationToChapter', index)"
+          @click="revealedItems.indexOf(chapter.element.id) !== -1 && $emit('jumpNarrationToChapter', index)"
         >
           <span>{{ chapter.label }}</span>
         </li>

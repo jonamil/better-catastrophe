@@ -3,16 +3,22 @@
     class="open"
     icon="info"
     title="Open introduction"
-    :tabindex="visible ? -1 : ''"
+    :tabindex="introPanelVisible ? -1 : ''"
     @click="$emit('toggleIntroPanel')"
   />
-  <div ref="intro" class="intro" :class="{ visible: visible }">
+  <div ref="intro" class="intro" :class="{ visible: introPanelVisible }">
     <div class="outer">
       <div class="inner">
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
         <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
-        <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
+        <div class="instructions">
+          <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
+          <div v-if="resetPromptVisible" class="reset">
+            <span>Want to re-explore from the beginning?</span>
+            <button @click="$emit('clearLocalStorageAndReload')">Reset progress and start over</button>
+          </div>
+        </div>
         <h3>Background</h3>
         <p>Use the button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe”</a>. This interactive online version uses an experimental interface that was created in an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
         <h3>Feedback</h3>
@@ -51,18 +57,20 @@ export default {
   },
 
   props: {
-    visible: Boolean,
+    introPanelVisible: Boolean,
+    resetPromptVisible: Boolean,
     formUrl: String
   },
 
   emits: [
     'togglePlayback',
-    'toggleIntroPanel'
+    'toggleIntroPanel',
+    'clearLocalStorageAndReload'
   ],
 
   watch: {
-    visible: function() {
-      if (this.visible) {
+    introPanelVisible: function() {
+      if (this.introPanelVisible) {
         this.$refs.intro.querySelectorAll('a, button').forEach(element => {
           element.removeAttribute('tabindex');
         });
@@ -109,7 +117,7 @@ button.open {
       opacity: 1;
     }
 
-    .outer {
+    .inner > *, .inner .instructions *:not(.reset) {
       opacity: 1;
     }
   }
@@ -150,12 +158,10 @@ button.open {
   .outer {
     position: absolute;
     overflow-y: auto;
-    opacity: 0;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
-    transition: opacity var(--transition-duration-long) var(--transition-timing);
   }
 
   .inner {
@@ -163,6 +169,11 @@ button.open {
     width: var(--panel-width);
     padding: 24px 28px var(--panel-width);
     box-sizing: border-box;
+
+    > *, .instructions *:not(.reset) {
+      opacity: 0;
+      transition: opacity var(--transition-duration-long) var(--transition-timing);
+    }
   }
 
   h1 {
@@ -202,13 +213,6 @@ button.open {
       display: block;
       margin: 6px 0 0;
     }
-
-    + img {
-      display: block;
-      width: 100%;
-      max-width: 290px;
-      margin: 20px auto 70px;
-    }
   }
 
   a {
@@ -220,6 +224,65 @@ button.open {
 
     &:hover {
       color: rgb(var(--accent-color));
+    }
+  }
+
+  .instructions {
+    position: relative;
+    display: grid;
+    align-items: start;
+    opacity: 1 !important;
+    margin: 20px 0 72px;
+
+    > * {
+      grid-column-start: 1;
+      grid-row-start: 1;
+    }
+
+    img {
+      display: block;
+      width: 100%;
+      max-width: 290px;
+      margin: 0 auto;
+    }
+
+    .reset {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-sizing: border-box;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      min-height: 118px;
+      margin: 2px -12px 0 -12px;
+      padding: 16px 24px 20px;
+      text-align: center;
+      text-wrap: balance;
+      line-height: 1.25;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+
+      button {
+        display: block;
+        margin: 12px auto 2px;
+        padding: 8px 16px;
+        appearance: none;
+        font-weight: 600;
+        border: none;
+        border-radius: 64px;
+        color: #fff;
+        background: rgb(var(--accent-color));
+        cursor: pointer;
+        transition: opacity var(--transition-duration-long) var(--transition-timing), transform var(--transition-duration) var(--transition-timing) !important;
+
+        &:hover {
+          transform: scale(1.0625);
+        }
+      }
     }
   }
 

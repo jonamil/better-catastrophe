@@ -23,10 +23,12 @@
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
     <IntroPanel
-      :visible="introPanelVisible"
+      :introPanelVisible="introPanelVisible"
+      :resetPromptVisible="resetPromptVisible"
       :formUrl="formUrl"
       @togglePlayback="togglePlayback()"
       @toggleIntroPanel="toggleIntroPanel()"
+      @clearLocalStorageAndReload="clearLocalStorageAndReload()"
     />
     <PlaybackControls
       :narrationChapters="narrationChapters"
@@ -104,9 +106,15 @@ export default {
       playbackActive: false,
       mediaBuffering: false,
 
+      // state of resumption from local storage
+      resumedFromStorage: false,
+      firstNarrationNodeUpdateAfterResumption: false,
+
       // state of control UI
       chapterListVisible: false,
       introPanelVisible: true,
+      resetPromptVisible: false,
+      resetPromptDelayAfterInteraction: 500,
 
       // count how many times teased nodes have been attempted to be clicked
       teasedClickAttempts: 0,
@@ -119,7 +127,6 @@ export default {
       // flowchart dimensions
       flowchartWidth: 0,
       flowchartHeight: 0,
-      flowchartScale: 1,
 
       // flowchart scaling parameters
       scaleParameters: {
@@ -460,7 +467,7 @@ export default {
       this.updateFlowchartAppearance();
     },
 
-    // smooth scroll to coordinated using custom duration and easing
+    // smooth scroll to coordinate using custom duration and easing
     smoothScroll(xEnd, yEnd, duration) {
       const time = Date.now();
       const xStart = this.flowchartContainer.scrollLeft;
@@ -488,15 +495,15 @@ export default {
 
     // add node element to revealedItems array
     markItemAsRevealed(node) {
-      if (this.revealedItems.indexOf(node) === -1) {
-        this.revealedItems.push(node);
+      if (this.revealedItems.indexOf(node.id) === -1) {
+        this.revealedItems.push(node.id);
       }
     },
 
     // add node element to teasedItems array
     markItemAsTeased(node) {
-      if (this.teasedItems.indexOf(node) === -1) {
-        this.teasedItems.push(node);
+      if (this.teasedItems.indexOf(node.id) === -1) {
+        this.teasedItems.push(node.id);
       }
     },
 
@@ -535,12 +542,12 @@ export default {
         });
       });
 
-      this.revealedItems.forEach(node => {
-        node.classList.add('revealed');
+      this.revealedItems.forEach(id => {
+        document.getElementById(id).classList.add('revealed');
       });
 
-      this.teasedItems.forEach(node => {
-        node.classList.add('teased');
+      this.teasedItems.forEach(id => {
+        document.getElementById(id).classList.add('teased');
       });
     },
 
@@ -606,6 +613,23 @@ export default {
 
       this.moveToNode(this.currentNode);
       this.toggleChapterList(true);
+      this.saveCurrentStateToLocalStorage();
+    },
+
+    // save all parameters relevant for restoring the state of the chart to local storage
+    saveCurrentStateToLocalStorage() {
+      localStorage.setItem('currentNodeId', JSON.stringify(this.currentNodeId));
+      localStorage.setItem('teasedItems', JSON.stringify(this.teasedItems));
+      localStorage.setItem('revealedItems', JSON.stringify(this.revealedItems));
+      localStorage.setItem('listenedTimestampIndexes', JSON.stringify(this.listenedTimestampIndexes));
+      localStorage.setItem('listenedChapterIndexes', JSON.stringify(this.listenedChapterIndexes));
+      localStorage.setItem('playbackPosition', JSON.stringify(this.playbackPosition));
+    },
+
+    // clear local storage and reload the page
+    clearLocalStorageAndReload() {
+      localStorage.clear();
+      location.reload();
     },
 
     // start playback
@@ -733,6 +757,15 @@ export default {
   watch: {
     // update current node ID upon change of narration node ID (which changes based on playback position)
     currentNarrationNodeId: function() {
+      // suppress updating current node ID and starting playback if state was resumed from storage and this is
+      // the first narration node update (triggered by the playbackPosition being returned to the previous value)
+      if (this.resumedFromStorage && !this.firstNarrationNodeUpdateAfterResumption) {
+        this.firstNarrationNodeUpdateAfterResumption = true;
+        // without triggering saveCurrentStateToLocalStorage here, a playbackPosition is 0 is saved until the current node updates
+        this.saveCurrentStateToLocalStorage();
+        return;
+      }
+
       this.setCurrentNodeId(this.currentNarrationNodeId);
 
       // start playback if not active already (happens when jumpNarrationToNode triggered)
@@ -751,10 +784,18 @@ export default {
       this.markChapterAsListened(this.currentNarrationChapterIndex);
     },
 
-    // log certain properties changing
+    // when the node ID changes for the first time, unhide reset prompt; also log any changes
     currentNodeId: function() {
+      if (!this.resetPromptVisible) {
+        setTimeout(() => {
+          this.resetPromptVisible = true;
+        }, this.resetPromptDelayAfterInteraction);
+      }
+
       this.logEvent('update_nodeId');
     },
+
+    // log more properties changing
     playbackActive: function() {
       this.logEvent('update_playbackActive');
     },
@@ -780,10 +821,25 @@ export default {
     if ('wakeLock' in navigator) {
       this.wakeLockSupported = true;
     }
+
+    // attempt to get state from previous session
+    if (localStorage.getItem('currentNodeId')) {
+      this.resumedFromStorage = true;
+      this.resetPromptVisible = true;
+
+      this.currentNodeId = JSON.parse(localStorage.getItem('currentNodeId'));
+      this.teasedItems = JSON.parse(localStorage.getItem('teasedItems'));
+      this.revealedItems = JSON.parse(localStorage.getItem('revealedItems'));
+      this.listenedTimestampIndexes = JSON.parse(localStorage.getItem('listenedTimestampIndexes'));
+      this.listenedChapterIndexes = JSON.parse(localStorage.getItem('listenedChapterIndexes'));
+    }
   },
 
   mounted() {
-    document.addEventListener('touchstart', () => {}, true);
+    // if resumed from storage, set currentTime of media to playbackPosition from storage
+    if (this.resumedFromStorage) {
+      this.$refs.media.currentTime = localStorage.getItem('playbackPosition');
+    }
 
     // make spacebar trigger togglePlayback
     document.addEventListener('keydown', event => {
@@ -818,6 +874,8 @@ export default {
 
       this.logEvent('input_click', { eventTarget: selectors.toString() });
     });
+
+    document.addEventListener('touchstart', () => {}, true);
   }
 }
 </script>
