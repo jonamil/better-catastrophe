@@ -414,9 +414,17 @@ export default {
       Object.entries(this.flowchartNodes).forEach(([nodeId, node]) => {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
+            const differentFromCurrentNode = nodeId !== vueInstance.currentNodeId;
+
+            // stop exploration during playback; if clicked node is different from current node,
+            // omit movement (since this will be taken care of by jumpNarrationToNode)
+            if (vueInstance.playbackActive && vueInstance.exploringDuringPlayback) {
+              vueInstance.stopExplorationDuringPlayback(differentFromCurrentNode);
+            }
+
             // if event is triggered during playback (and does not originate from the node already active),
             // jump narration position to that node; otherwise set node ID without affecting narration
-            if (vueInstance.playbackActive && nodeId !== vueInstance.currentNodeId) {
+            if (vueInstance.playbackActive && differentFromCurrentNode) {
               vueInstance.jumpNarrationToNode(nodeId);
             } else {
               vueInstance.setCurrentNodeId(nodeId);
@@ -697,11 +705,11 @@ export default {
     },
 
     // stop exploration during playback
-    stopExplorationDuringPlayback() {
+    stopExplorationDuringPlayback(omitMovement = false) {
       this.exploringDuringPlayback = false;
       clearTimeout(this.returnToPlaybackTimeout);
       
-      if (this.playbackActive) {
+      if (this.playbackActive && !omitMovement) {
         this.moveToNode(this.currentNode, true);
       }
     },
