@@ -111,7 +111,7 @@ export default {
       // state of exploration during playback
       exploringDuringPlayback: false,
       returnToPlaybackTimeout: undefined,
-      returnToPlaybackDelay: 10000,
+      returnToPlaybackDelay: 8000,
 
       // state of resumption from local storage
       resumedFromStorage: false,
