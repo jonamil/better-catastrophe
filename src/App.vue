@@ -575,7 +575,7 @@ export default {
 
     // jump playback position to chapter
     jumpNarrationToChapter(index) {
-      this.$refs.media.currentTime = this.narrationChapters[index].timestamp;
+      this.setPlaybackPosition(this.narrationChapters[index].timestamp);
 
       // if node of selected chapter is the same as the current narration node, this will not trigger
       // currentNarrationNodeId watcher -> therefore start playback manually
@@ -596,10 +596,10 @@ export default {
           const nextNodeOccurrenceAfterPlaybackPosition = nodeOccurrencesInNarration.find(event => event[1] >= this.playbackPosition);
 
           if (nextNodeOccurrenceAfterPlaybackPosition) {
-            this.$refs.media.currentTime = nextNodeOccurrenceAfterPlaybackPosition[1];
+            this.setPlaybackPosition(nextNodeOccurrenceAfterPlaybackPosition[1]);
           } else {
             const lastNodeOccurrence = nodeOccurrencesInNarration[nodeOccurrencesInNarration.length - 1];
-            this.$refs.media.currentTime = lastNodeOccurrence[1];
+            this.setPlaybackPosition(lastNodeOccurrence[1]);
           }
         // if playback is paused, jump to the first unlistened occurrence in narration sequence or the final one if none exists
         } else {
@@ -607,7 +607,7 @@ export default {
 
           const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
             if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
-              this.$refs.media.currentTime = event[1];
+              this.setPlaybackPosition(event[1]);
               return false;
             } else {
               furthestNodeOccurrence = event;
@@ -616,7 +616,7 @@ export default {
           });
 
           if (noUnlistenedOccurrences) {
-            this.$refs.media.currentTime = furthestNodeOccurrence[1];
+            this.setPlaybackPosition(furthestNodeOccurrence[1]);
           }
         }
       } else {
@@ -653,6 +653,13 @@ export default {
       localStorage.setItem('listenedTimestampIndexes', JSON.stringify(this.listenedTimestampIndexes));
       localStorage.setItem('listenedChapterIndexes', JSON.stringify(this.listenedChapterIndexes));
       localStorage.setItem('playbackPosition', JSON.stringify(this.playbackPosition));
+    
+    // update current playback position and set currentTime of media to that position
+    // (timeupdate event of media will keep updating playback position once ready/buffered)
+    setPlaybackPosition(playbackPosition) {
+      this.playbackPosition = playbackPosition;
+      this.$refs.media.currentTime = playbackPosition;
+    },
     },
 
     // clear local storage and reload the page
@@ -894,7 +901,7 @@ export default {
   mounted() {
     // if resumed from storage, set currentTime of media to playbackPosition from storage
     if (this.resumedFromStorage) {
-      this.$refs.media.currentTime = localStorage.getItem('playbackPosition');
+      this.setPlaybackPosition(this.playbackPosition);
     }
 
     // make spacebar trigger togglePlayback
