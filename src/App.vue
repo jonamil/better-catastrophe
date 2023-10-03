@@ -606,6 +606,8 @@ export default {
       clearTimeout(this.returnToPlaybackTimeout);
 
       this.returnToPlaybackTimeout = setTimeout(this.stopExplorationDuringPlayback, this.returnToPlaybackDelay);
+
+      this.logEvent('call_startExplorationDuringPlayback');
     },
 
     // stop exploration during playback
@@ -616,6 +618,8 @@ export default {
       if (this.flowchartStore.playbackActive && !omitMovement) {
         this.moveToNode(this.flowchartStore.currentNode, true);
       }
+
+      this.logEvent('call_stopExplorationDuringPlayback');
     },
 
     // toggle visibility of chapter list
@@ -689,7 +693,8 @@ export default {
         playbackActive: +this.flowchartStore.playbackActive,
         playbackPosition: this.flowchartStore.playbackPosition,
         chapterListVisible: +this.chapterListVisible,
-        introPanelVisible: +this.introPanelVisible
+        introPanelVisible: +this.introPanelVisible,
+        exploringDuringPlayback: +this.flowchartStore.exploringDuringPlayback
       };
 
       fetch(this.loggingUrl, {
