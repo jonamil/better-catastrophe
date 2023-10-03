@@ -14,9 +14,9 @@
         <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
         <div class="instructions">
           <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
-          <div v-if="resetPromptVisible" class="reset">
+          <div v-if="resetActionAvailable" class="reset">
             <span>Want to re-explore from the beginning?</span>
-            <button @click="$emit('clearLocalStorageAndReload')">Reset progress and start over</button>
+            <button @click="clearLocalStorageAndReload()">Reset progress and start over</button>
           </div>
         </div>
         <h3>Background</h3>
@@ -47,7 +47,11 @@
 </template>
 
 <script>
+import { mapState, mapWritableState, mapActions } from 'pinia';
+
 import PrimaryButton from '@/components/PrimaryButton.vue';
+
+import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
   name: 'IntroPanel',
@@ -58,18 +62,46 @@ export default {
 
   props: {
     introPanelVisible: Boolean,
-    resetPromptVisible: Boolean,
     formUrl: String
   },
 
   emits: [
     'togglePlayback',
-    'toggleIntroPanel',
-    'clearLocalStorageAndReload'
+    'toggleIntroPanel'
   ],
 
+  data() {
+    return {
+      resetAppearanceDelay: 500
+    }
+  },
+  
+  computed: {
+    ...mapState(useFlowchartStore, [
+      'currentNodeId'
+    ]),
+    ...mapWritableState(useFlowchartStore, [
+      'resetActionAvailable'
+    ])
+  },
+
+  methods: {
+    ...mapActions(useFlowchartStore, [
+      'clearLocalStorageAndReload'
+    ])
+  },
+
   watch: {
-    introPanelVisible: function() {
+    // when the node ID changes for the first time, unhide reset prompt
+    currentNodeId() {
+      if (!this.resetActionAvailable) {
+        setTimeout(() => {
+          this.resetActionAvailable = true;
+        }, this.resetAppearanceDelay);
+      }
+    },
+    // make interactive elements non-keyboard-selectable when intro panel is hidden
+    introPanelVisible() {
       if (this.introPanelVisible) {
         this.$refs.intro.querySelectorAll('a, button').forEach(element => {
           element.removeAttribute('tabindex');

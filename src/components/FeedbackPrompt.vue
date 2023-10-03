@@ -1,5 +1,5 @@
 <template>
-  <div class="feedback" :class="{ visible }">
+  <div class="feedback" :class="{ visible: feedbackPromptVisible }">
     <div class="prompt" :class="{ attention }">
       <span>Thank you for trying out the flowchart interface! Please help our research by filling out this short feedback form.</span>
     </div>
@@ -12,7 +12,11 @@
 </template>
 
 <script>
+import { mapState } from 'pinia';
+
 import PrimaryButton from '@/components/PrimaryButton.vue';
+
+import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
   name: 'FeedbackPrompt',
@@ -22,7 +26,6 @@ export default {
   },
 
   props: {
-    visible: Boolean,
     formUrl: String
   },
 
@@ -32,6 +35,12 @@ export default {
     }
   },
 
+  computed: {
+    ...mapState(useFlowchartStore, [
+      'feedbackPromptVisible'
+    ])
+  },
+
   methods: {
     openForm() {
       window.open(this.formUrl, '_blank');
@@ -39,7 +48,7 @@ export default {
   },
 
   watch: {
-    visible: function() {
+    feedbackPromptVisible: function() {
       this.attention = true;
 
       setTimeout(() => {
@@ -70,24 +79,15 @@ export default {
   }
 
   &:hover .prompt, .prompt.attention {
-    // visibility: visible;
-    // opacity: 1;
     width: 330px;
   }
 
   .prompt {
     position: relative;
     display: inline-block;
-    // display: inline-flex;
-    // align-items: center;
-    // visibility: hidden;
-    // opacity: 0;
     overflow: hidden;
-    // box-sizing: border-box;
-    // max-width: 448px;
     width: 64px;
     height: 64px;
-    // padding: 0 80px 2px 24px;
     border-radius: 32px;
     color: rgba(255,255,255,0.5);
     background: rgba(90,90,90,0.75);

@@ -2,34 +2,34 @@
   <div class="controls">
     <PlayButton
       class="playback"
-      :class="{ playing: playbackActive }"
-      :state="currentNodeId === currentNarrationNodeId ? 'highlighted' : ''"
+      :class="{ playing: flowchartStore.playbackActive }"
+      :state="flowchartStore.currentNodeId === flowchartStore.currentNarrationNodeId ? 'highlighted' : ''"
+      :progress="flowchartStore.playbackProgress"
       :icon="playButtonIcon"
-      :progress="playbackProgress"
       :title="playButtonTitle"
-      @click="$emit(exploringDuringPlayback ? 'stopExplorationDuringPlayback' : 'togglePlayback')"
+      @click="$emit(flowchartStore.exploringDuringPlayback ? 'stopExplorationDuringPlayback' : 'togglePlayback')"
     />
-    <div ref="chapters" class="chapters" :class="{ shadow: !introPanelVisible, playing: playbackActive, open: chapterListVisible }">
+    <div ref="chapters" class="chapters" :class="{ shadow: !introPanelVisible, playing: flowchartStore.playbackActive, open: chapterListVisible }">
       <div
         class="preview"
         :title="chapterListVisible ? 'Close narration log' : 'Open narration log'"
         @click="$emit('toggleChapterList')"
       >
-        <span v-if="currentNarrationChapter">
-          {{ currentNarrationChapter.label }}
+        <span v-if="flowchartStore.currentNarrationChapter">
+          {{ flowchartStore.currentNarrationChapter.label }}
         </span>
       </div>
       <ul ref="chapterList">
         <li
-          v-for="(chapter, index) in narrationChapters"
+          v-for="(chapter, index) in flowchartStore.narrationChapters"
           :key="index"
           :class="[
             chapter.type,
-            revealedItems.indexOf(chapter.element.id) !== -1 ? 'revealed' : '',
-            listenedChapterIndexes.indexOf(index) !== -1 ? 'listened' : '',
-            currentNarrationChapterIndex === index ? 'active' : ''
+            flowchartStore.revealedItems.indexOf(chapter.element.id) !== -1 ? 'revealed' : '',
+            flowchartStore.listenedChapterIndexes.indexOf(index) !== -1 ? 'listened' : '',
+            flowchartStore.currentNarrationChapterIndex === index ? 'active' : ''
           ]"
-          @click="revealedItems.indexOf(chapter.element.id) !== -1 && $emit('jumpNarrationToChapter', index)"
+          @click="flowchartStore.revealedItems.indexOf(chapter.element.id) !== -1 && $emit('jumpNarrationToChapter', index)"
         >
           <span>{{ chapter.label }}</span>
         </li>
@@ -37,19 +37,23 @@
     </div>
     <PrimaryButton
       class="jump"
-      :class="{ visible: jumpActionVisible, shadow: !introPanelVisible }"
-      :state="jumpActionAvailable ? 'highlighted' : 'disabled'"
+      :class="{ visible: flowchartStore.jumpActionVisible, shadow: !introPanelVisible }"
+      :state="flowchartStore.jumpActionAvailable ? 'highlighted' : 'disabled'"
       icon="jump"
-      :title="jumpActionAvailable ? 'Resume narration from selected item' : 'Narration not available for selected item'"
-      :tabindex="!jumpActionAvailable ? -1 : ''"
-      @click="$emit('jumpNarrationToNode', currentNodeId)"
+      :title="flowchartStore.jumpActionAvailable ? 'Resume narration from selected item' : 'Narration not available for selected item'"
+      :tabindex="!flowchartStore.jumpActionAvailable ? -1 : ''"
+      @click="$emit('jumpNarrationToNode', flowchartStore.currentNodeId)"
     />
   </div>
 </template>
 
 <script>
+import { mapStores } from 'pinia';
+
 import PrimaryButton from '@/components/PrimaryButton.vue';
 import PlayButton from '@/components/PlayButton.vue';
+
+import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
   name: 'PlaybackControls',
@@ -60,19 +64,6 @@ export default {
   },
 
   props: {
-    narrationChapters: Array,
-    currentNodeId: String,
-    currentNarrationNodeId: String,
-    currentNarrationChapterIndex: Number,
-    currentNarrationChapter: Object,
-    listenedChapterIndexes: Array,
-    revealedItems: Array,
-    playbackActive: Boolean,
-    playbackProgress: Number,
-    mediaBuffering: Boolean,
-    exploringDuringPlayback: Boolean,
-    jumpActionVisible: Boolean,
-    jumpActionAvailable: Boolean,
     chapterListVisible: Boolean,
     introPanelVisible: Boolean
   },
@@ -86,23 +77,24 @@ export default {
   ],
 
   computed: {
+    ...mapStores(useFlowchartStore),
     playButtonIcon() {
-      if (this.mediaBuffering) {
+      if (this.flowchartStore.mediaBuffering) {
         return 'buffering';
-      } else if (!this.playbackActive) {
+      } else if (!this.flowchartStore.playbackActive) {
         return 'play';
-      } else if (this.exploringDuringPlayback) {
+      } else if (this.flowchartStore.exploringDuringPlayback) {
         return 'return';
       } else {
         return 'pause';
       }
     },
     playButtonTitle() {
-      if (this.mediaBuffering) {
+      if (this.flowchartStore.mediaBuffering) {
         return 'Narration audio loading…';
-      } else if (!this.playbackActive) {
+      } else if (!this.flowchartStore.playbackActive) {
         return 'Resume narration playback';
-      } else if (this.exploringDuringPlayback) {
+      } else if (this.flowchartStore.exploringDuringPlayback) {
         return 'Return to playback location';
       } else {
         return 'Pause narration playback';
@@ -113,7 +105,7 @@ export default {
   watch: {
     // hacky way to keep the chapter list’s background blur active on Safari when controls are full-width
     playbackActive: function() {
-      if (this.playbackActive === false && this.$refs.chapters.style['-webkit-backdrop-filter'] !== undefined) {
+      if (this.flowchartStore.playbackActive === false && this.$refs.chapters.style['-webkit-backdrop-filter'] !== undefined) {
         this.$refs.chapters.style['-webkit-backdrop-filter'] = `blur(${ 16 + Math.random() / 100 }px)`;
       }
     },

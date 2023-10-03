@@ -13,37 +13,22 @@
     </div>
     <audio
       ref="media"
-      @loadedmetadata="playbackDuration = $event.target.duration"
-      @timeupdate="playbackPosition = $event.target.currentTime"
-      @stalled="mediaBuffering = true"
-      @loadeddata="mediaBuffering = false"
-      @playing="mediaBuffering = false"
+      @loadedmetadata="flowchartStore.playbackDuration = $event.target.duration"
+      @timeupdate="flowchartStore.playbackPosition = $event.target.currentTime"
+      @stalled="flowchartStore.mediaBuffering = true"
+      @loadeddata="flowchartStore.mediaBuffering = false"
+      @playing="flowchartStore.mediaBuffering = false"
       @ended="stopPlayback(true)"
     >
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
     <IntroPanel
       :introPanelVisible="introPanelVisible"
-      :resetPromptVisible="resetPromptVisible"
       :formUrl="formUrl"
       @togglePlayback="togglePlayback()"
       @toggleIntroPanel="toggleIntroPanel()"
-      @clearLocalStorageAndReload="clearLocalStorageAndReload()"
     />
     <PlaybackControls
-      :narrationChapters="narrationChapters"
-      :currentNodeId="currentNodeId"
-      :currentNarrationNodeId="currentNarrationNodeId"
-      :currentNarrationChapterIndex="currentNarrationChapterIndex"
-      :currentNarrationChapter="currentNarrationChapter"
-      :listenedChapterIndexes="listenedChapterIndexes"
-      :revealedItems="revealedItems"
-      :playbackActive="playbackActive"
-      :playbackProgress="playbackProgress"
-      :mediaBuffering="mediaBuffering"
-      :exploringDuringPlayback="exploringDuringPlayback"
-      :jumpActionVisible="jumpActionVisible"
-      :jumpActionAvailable="jumpActionAvailable"
       :chapterListVisible="chapterListVisible"
       :introPanelVisible="introPanelVisible"
       @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
@@ -53,22 +38,23 @@
       @jumpNarrationToNode="jumpNarrationToNode($event)"
     />
     <FeedbackPrompt
-      :visible="feedbackPromptVisible"
       :formUrl="formUrl"
     />
   </main>
 </template>
 
 <script>
+import { mapStores, mapActions } from 'pinia';
+import { scaleLinear, easeExpOut } from 'd3';
+
 import IntroPanel from '@/components/IntroPanel.vue';
 import PlaybackControls from '@/components/PlaybackControls.vue';
 import FeedbackPrompt from '@/components/FeedbackPrompt.vue';
+import InlineSvg from 'vue-inline-svg';
+
+import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 import flowchartAsset from '@/assets/flowchart.svg';
-import narrationTimestamps from '@/data/timestamps.json';
-
-import InlineSvg from 'vue-inline-svg';
-import { scaleLinear, easeExpOut } from 'd3';
 
 export default {
   name: 'App',
@@ -89,41 +75,15 @@ export default {
       flowchartAsset,
       flowchartContainer: undefined,
       flowchartElement: undefined,
-      
-      // related to flowchart nodes
-      flowchartNodes: {},
-      currentNodeId: 'n001',
-      teasedItems: [],
-      revealedItems: [],
-
-      // related to flowchart narration/timestamps
-      narrationTimestamps,
-      listenedTimestampIndexes: [],
-      narrationChapters: [],
-      listenedChapterIndexes: [],
-
-      // state of playback
-      playbackDuration: 1,
-      playbackPosition: 0,
-      playbackActive: false,
-      mediaBuffering: false,
-
-      // state of exploration during playback
-      exploringDuringPlayback: false,
-      returnToPlaybackTimeout: undefined,
-      returnToPlaybackDelay: 8000,
-
-      // state of resumption from local storage
-      resumedFromStorage: false,
-      firstNarrationNodeUpdateAfterResumption: false,
 
       // state of control UI
       chapterListVisible: false,
       introPanelVisible: true,
-      resetPromptVisible: false,
-      resetPromptDelayAfterInteraction: 500,
 
-      // count how many times teased nodes have been attempted to be clicked
+      // whether narration node update is the first after resumption from local storage
+      firstNarrationNodeUpdateAfterResumption: false,
+
+      // count of how many times teased nodes have been attempted to be clicked
       teasedClickAttempts: 0,
 
       // window dimensions
@@ -154,12 +114,15 @@ export default {
         minDuration: 500,
         maxDuration: 1000
       },
+
+      // return to playback timeout reference and auto-return delay
+      returnToPlaybackTimeout: undefined,
+      returnToPlaybackDelay: 8000,
       
       // fixed pixel values
       introPanelWidth: 416,
       fullWidthIntroPanelThreshold: 600,
       horizontalCenterOffset: 24,
-      // verticalCenterOffset
       
       // logging and feedback form URLs
       loggingEnabled: true,
@@ -173,64 +136,8 @@ export default {
   },
 
   computed: {
-    // playback progress as percentage (with minimum value for initial progress bar visibility)
-    playbackProgress() {
-      if (this.playbackPosition !== 0) {
-        return Math.max(Math.round(this.playbackPosition / this.playbackDuration * 1000) / 1000, 0.015);
-      } else {
-        return 0;
-      }
-    },
-    // current node object
-    currentNode() {
-      return this.flowchartNodes[this.currentNodeId];
-    },
-    // current index in narrationTimestamps based on media playback position
-    currentNarrationNodeIndex() {
-      const nextNarrationNodeIndex = this.narrationTimestamps.findIndex(event => event[1] > this.playbackPosition);
-
-      if (nextNarrationNodeIndex === -1) {
-        // no more narration events after playback position, thus return last index
-        return Math.max(this.narrationTimestamps.length - 1, 0);
-      } else {
-        // return the current index (subsequent index minus one)
-        return Math.max(nextNarrationNodeIndex - 1, 0);
-      }
-    },
-    // current narration node ID
-    currentNarrationNodeId() {
-      return this.narrationTimestamps[this.currentNarrationNodeIndex][0];
-    },
-    // current narration node object
-    currentNarrationNode() {
-      return this.flowchartNodes[this.currentNarrationNodeId];
-    },
-    // current chapter index based on playback position
-    currentNarrationChapterIndex() {
-      const nextNarrationChapterIndex = this.narrationChapters.findIndex(chapter => chapter.timestamp > this.playbackPosition);
-
-      if (nextNarrationChapterIndex === -1) {
-        return Math.max(this.narrationChapters.length - 1, 0);
-      } else {
-        return Math.max(nextNarrationChapterIndex - 1, 0);
-      }
-    },
-    // current chapter object
-    currentNarrationChapter() {
-      return this.narrationChapters[this.currentNarrationChapterIndex];
-    },
-    // determines whether jump action is visible (i.e. current node differs from current narration node)
-    jumpActionVisible() {
-      return !this.playbackActive && this.currentNodeId !== this.currentNarrationNodeId;
-    },
-    // determines whether jump action is available (i.e. if jumpNarrationToNode action can be triggered from current node)
-    jumpActionAvailable() {
-      return this.jumpActionVisible && this.narrationTimestamps.findIndex(event => event[0] === this.currentNodeId) !== -1;
-    },
-    // determines whether feedback prompt is visible (revealed after threshold of revealed items has been reached)
-    feedbackPromptVisible() {
-      return this.revealedItems.length >= 64;
-    },
+    // properties from FlowchartStore
+    ...mapStores(useFlowchartStore),
     // calculates scale factor for flowchart element extent based on window dimensions
     zoomScale() {
       return this.scaleFromWindowSideLength(this.shortestWindowSideLength);
@@ -245,6 +152,12 @@ export default {
   },
 
   methods: {
+    // actions from FlowchartStore
+    ...mapActions(useFlowchartStore, [
+      'saveToLocalStorage',
+      'resumeFromLocalStorage'
+    ]),
+
     // flowchart inline SVG loaded
     flowchartReady(element) {
       this.flowchartContainer = this.$refs.container;
@@ -271,7 +184,7 @@ export default {
       // stop playback and hide chapter list / intro panel upon user-initiated scrolling
       ['wheel', 'touchmove'].forEach(eventName => {
         this.flowchartContainer.addEventListener(eventName, () => {
-          if (this.playbackActive) {
+          if (this.flowchartStore.playbackActive) {
             this.startExplorationDuringPlayback();
           }
 
@@ -283,7 +196,7 @@ export default {
       this.flowchartContainer.addEventListener('mousedown', event => {
         // only start panning if drag was not initiated above visible node
         if (!event.target.closest('g[id^=n].teased, g[id^=n].revealed')) {
-          if (this.playbackActive) {
+          if (this.flowchartStore.playbackActive) {
             this.startExplorationDuringPlayback();
           }
 
@@ -326,7 +239,7 @@ export default {
       this.collectFlowchartNodes();
     },
 
-    // populate this.flowchartNodes with nodes from svg source
+    // populate flowchartStore’s flowchartNodes object with nodes from svg source
     collectFlowchartNodes() {
       const nodes = this.flowchartElement.querySelectorAll('g[id^=n]');
 
@@ -334,7 +247,7 @@ export default {
         const nodeProperties = nodeElement.id.split('_');
         const nodeId = nodeProperties[0];
         
-        this.flowchartNodes[nodeId] = {
+        this.flowchartStore.flowchartNodes[nodeId] = {
           element: nodeElement,
           type: nodeProperties[1],
           label: this.truncatedLabelFromTextContent(nodeElement.textContent),
@@ -351,50 +264,50 @@ export default {
         const edgeTo = 'n' + edgeProperties[2];
         const bidirectionalEdge = edgeProperties.length > 3;
 
-        this.flowchartNodes[edgeFrom].outgoing.push({
+        this.flowchartStore.flowchartNodes[edgeFrom].outgoing.push({
           edge: edgeElement,
-          node: this.flowchartNodes[edgeTo]
+          node: this.flowchartStore.flowchartNodes[edgeTo]
         });
-        this.flowchartNodes[edgeTo].incoming.push({
+        this.flowchartStore.flowchartNodes[edgeTo].incoming.push({
           edge: edgeElement,
-          node: this.flowchartNodes[edgeFrom]
+          node: this.flowchartStore.flowchartNodes[edgeFrom]
         });
 
         // if edge is bidirectional, additionally add the same edge in reverse to the destination/origin node
         if (bidirectionalEdge) {
-          this.flowchartNodes[edgeTo].outgoing.push({
+          this.flowchartStore.flowchartNodes[edgeTo].outgoing.push({
             edge: edgeElement,
-            node: this.flowchartNodes[edgeFrom]
+            node: this.flowchartStore.flowchartNodes[edgeFrom]
           });
-          this.flowchartNodes[edgeFrom].incoming.push({
+          this.flowchartStore.flowchartNodes[edgeFrom].incoming.push({
             edge: edgeElement,
-            node: this.flowchartNodes[edgeTo]
+            node: this.flowchartStore.flowchartNodes[edgeTo]
           });
         }
       });
 
       this.collectNarrationChapters();
       this.addMouseListeners();
-      this.setCurrentNodeId(this.currentNodeId);
+      this.setCurrentNodeId(this.flowchartStore.currentNodeId);
     },
 
-    // populate this.narrationChapters with non-label nodes
+    // populate flowchartStore’s narrationChapters array with non-label nodes
     collectNarrationChapters() {
       const alreadyListedPrimaryChapters = [];
 
-      this.narrationTimestamps.forEach(event => {
+      this.flowchartStore.narrationTimestamps.forEach(event => {
         const eventId = event[0];
         const eventTimestamp = event[1];
 
-        const node = this.flowchartNodes[eventId];
-        const firstItemOrNoDirectRepetition = this.narrationChapters.length === 0 || this.narrationChapters[this.narrationChapters.length - 1].id !== eventId;
+        const node = this.flowchartStore.flowchartNodes[eventId];
+        const firstItemOrNoDirectRepetition = this.flowchartStore.narrationChapters.length === 0 || this.flowchartStore.narrationChapters[this.flowchartStore.narrationChapters.length - 1].id !== eventId;
         
         if (node.type !== 'label' && firstItemOrNoDirectRepetition) {
           const chapterType = node.type === 'chapter' && alreadyListedPrimaryChapters.indexOf(eventId) === -1
             ? 'primary'
             : 'secondary';
 
-          this.narrationChapters.push({
+          this.flowchartStore.narrationChapters.push({
             id: eventId,
             element: node.element,
             type: chapterType,
@@ -411,7 +324,7 @@ export default {
     addMouseListeners() {
       const vueInstance = this;
 
-      Object.entries(this.flowchartNodes).forEach(([nodeId, node]) => {
+      Object.entries(this.flowchartStore.flowchartNodes).forEach(([nodeId, node]) => {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
             const differentFromCurrentNode = nodeId !== vueInstance.currentNodeId;
@@ -474,7 +387,7 @@ export default {
       );
 
       // omit movement if playback is active and distance from viewport center to destination node falls below threshold
-      if (forceMovement || !this.playbackActive || travelDistance > this.travelThreshold) {
+      if (forceMovement || !this.flowchartStore.playbackActive || travelDistance > this.travelThreshold) {
         const duration = Math.min(
           Math.max(
             travelDistance * this.transitionParameters.distanceFactor,
@@ -517,29 +430,29 @@ export default {
 
     // add node element to revealedItems array
     markItemAsRevealed(node) {
-      if (this.revealedItems.indexOf(node.id) === -1) {
-        this.revealedItems.push(node.id);
+      if (this.flowchartStore.revealedItems.indexOf(node.id) === -1) {
+        this.flowchartStore.revealedItems.push(node.id);
       }
     },
 
     // add node element to teasedItems array
     markItemAsTeased(node) {
-      if (this.teasedItems.indexOf(node.id) === -1) {
-        this.teasedItems.push(node.id);
+      if (this.flowchartStore.teasedItems.indexOf(node.id) === -1) {
+        this.flowchartStore.teasedItems.push(node.id);
       }
     },
 
     // add timestamp/event index to listenedTimestampIndexes array
     markTimestampAsListened(index) {
-      if (this.listenedTimestampIndexes.indexOf(index) === -1) {
-        this.listenedTimestampIndexes.push(index);
+      if (this.flowchartStore.listenedTimestampIndexes.indexOf(index) === -1) {
+        this.flowchartStore.listenedTimestampIndexes.push(index);
       }
     },
 
     // add chapter index to listenedChapterIndexes array
     markChapterAsListened(index) {
-      if (this.listenedChapterIndexes.indexOf(index) === -1) {
-        this.listenedChapterIndexes.push(index);
+      if (this.flowchartStore.listenedChapterIndexes.indexOf(index) === -1) {
+        this.flowchartStore.listenedChapterIndexes.push(index);
       }
     },
 
@@ -549,10 +462,10 @@ export default {
         element.classList.remove('current', 'next', 'revealed', 'teased');
       });
 
-      this.currentNode.element.classList.add('current');
-      this.markItemAsRevealed(this.currentNode.element);
+      this.flowchartStore.currentNode.element.classList.add('current');
+      this.markItemAsRevealed(this.flowchartStore.currentNode.element);
 
-      this.currentNode.outgoing.forEach(item => {
+      this.flowchartStore.currentNode.outgoing.forEach(item => {
         item.edge.classList.add('next');
         item.node.element.classList.add('next');
         this.markItemAsRevealed(item.edge);
@@ -564,22 +477,22 @@ export default {
         });
       });
 
-      this.revealedItems.forEach(id => {
+      this.flowchartStore.revealedItems.forEach(id => {
         document.getElementById(id).classList.add('revealed');
       });
 
-      this.teasedItems.forEach(id => {
+      this.flowchartStore.teasedItems.forEach(id => {
         document.getElementById(id).classList.add('teased');
       });
     },
 
     // jump playback position to chapter
     jumpNarrationToChapter(index) {
-      this.setPlaybackPosition(this.narrationChapters[index].timestamp);
+      this.setPlaybackPosition(this.flowchartStore.narrationChapters[index].timestamp);
 
       // if node of selected chapter is the same as the current narration node, this will not trigger
       // currentNarrationNodeId watcher -> therefore start playback manually
-      if (this.narrationChapters[index].id === this.currentNarrationNodeId) {
+      if (this.flowchartStore.narrationChapters[index].id === this.flowchartStore.currentNarrationNodeId) {
         this.startPlayback();
       }
 
@@ -588,12 +501,12 @@ export default {
 
     // jump playback position to node (either current node or node clicked during playback)
     jumpNarrationToNode(nodeId) {
-      const nodeOccurrencesInNarration = this.narrationTimestamps.filter(event => event[0] === nodeId);
+      const nodeOccurrencesInNarration = this.flowchartStore.narrationTimestamps.filter(event => event[0] === nodeId);
 
       if (nodeOccurrencesInNarration.length !== 0) {
         // if playback is active, jump to the next occurrence after the current playback position or the final one if none exists
-        if (this.playbackActive) {
-          const nextNodeOccurrenceAfterPlaybackPosition = nodeOccurrencesInNarration.find(event => event[1] >= this.playbackPosition);
+        if (this.flowchartStore.playbackActive) {
+          const nextNodeOccurrenceAfterPlaybackPosition = nodeOccurrencesInNarration.find(event => event[1] >= this.flowchartStore.playbackPosition);
 
           if (nextNodeOccurrenceAfterPlaybackPosition) {
             this.setPlaybackPosition(nextNodeOccurrenceAfterPlaybackPosition[1]);
@@ -606,7 +519,7 @@ export default {
           let furthestNodeOccurrence = ['', 0];
 
           const noUnlistenedOccurrences = nodeOccurrencesInNarration.every(event => {
-            if (this.listenedTimestampIndexes.indexOf(this.narrationTimestamps.indexOf(event)) === -1) {
+            if (this.flowchartStore.listenedTimestampIndexes.indexOf(this.flowchartStore.narrationTimestamps.indexOf(event)) === -1) {
               this.setPlaybackPosition(event[1]);
               return false;
             } else {
@@ -631,41 +544,25 @@ export default {
 
     // update the current node ID
     setCurrentNodeId(nodeId) {
-      this.currentNodeId = nodeId;
+      this.flowchartStore.currentNodeId = nodeId;
 
       // move to the updated (now current) node ID, unless exploration
       // during playback is active, in which case only refresh appearance
-      if (!this.exploringDuringPlayback) {
-        this.moveToNode(this.currentNode);
+      if (!this.flowchartStore.exploringDuringPlayback) {
+        this.moveToNode(this.flowchartStore.currentNode);
       } else {
         this.updateFlowchartAppearance();
       }
       
       this.toggleChapterList(true);
-      this.saveCurrentStateToLocalStorage();
+      this.saveToLocalStorage();
     },
 
-    // save all parameters relevant for restoring the state of the chart to local storage
-    saveCurrentStateToLocalStorage() {
-      localStorage.setItem('currentNodeId', JSON.stringify(this.currentNodeId));
-      localStorage.setItem('teasedItems', JSON.stringify(this.teasedItems));
-      localStorage.setItem('revealedItems', JSON.stringify(this.revealedItems));
-      localStorage.setItem('listenedTimestampIndexes', JSON.stringify(this.listenedTimestampIndexes));
-      localStorage.setItem('listenedChapterIndexes', JSON.stringify(this.listenedChapterIndexes));
-      localStorage.setItem('playbackPosition', JSON.stringify(this.playbackPosition));
-    
     // update current playback position and set currentTime of media to that position
     // (timeupdate event of media will keep updating playback position once ready/buffered)
     setPlaybackPosition(playbackPosition) {
-      this.playbackPosition = playbackPosition;
+      this.flowchartStore.playbackPosition = playbackPosition;
       this.$refs.media.currentTime = playbackPosition;
-    },
-    },
-
-    // clear local storage and reload the page
-    clearLocalStorageAndReload() {
-      localStorage.clear();
-      location.reload();
     },
 
     // start playback
@@ -673,23 +570,23 @@ export default {
       this.hideChapterListAndIntroPanel();
 
       if (!nodeIdAlreadySet) {
-        this.setCurrentNodeId(this.currentNarrationNodeId);
+        this.setCurrentNodeId(this.flowchartStore.currentNarrationNodeId);
       }
 
       // mark first chapter as listened if playback was started right from the start
-      if (this.listenedChapterIndexes.length === 0) {
-        this.markChapterAsListened(this.currentNarrationChapterIndex);
+      if (this.flowchartStore.listenedChapterIndexes.length === 0) {
+        this.markChapterAsListened(this.flowchartStore.currentNarrationChapterIndex);
       }
 
       this.$refs.media.play();
-      this.playbackActive = true;
+      this.flowchartStore.playbackActive = true;
       this.requestWakeLock();
     },
 
     // stop playback
     stopPlayback(openChapterList = false) {
       this.$refs.media.pause();
-      this.playbackActive = false;
+      this.flowchartStore.playbackActive = false;
       this.stopExplorationDuringPlayback();
       this.releaseWakeLock();
       
@@ -700,12 +597,12 @@ export default {
 
     // toggle playback
     togglePlayback() {
-      this.playbackActive ? this.stopPlayback() : this.startPlayback();
+      this.flowchartStore.playbackActive ? this.stopPlayback() : this.startPlayback();
     },
 
     // start exploration during playback and set timeout to return to playback location automatically
     startExplorationDuringPlayback() {
-      this.exploringDuringPlayback = true;
+      this.flowchartStore.exploringDuringPlayback = true;
       clearTimeout(this.returnToPlaybackTimeout);
 
       this.returnToPlaybackTimeout = setTimeout(this.stopExplorationDuringPlayback, this.returnToPlaybackDelay);
@@ -713,11 +610,11 @@ export default {
 
     // stop exploration during playback
     stopExplorationDuringPlayback(omitMovement = false) {
-      this.exploringDuringPlayback = false;
+      this.flowchartStore.exploringDuringPlayback = false;
       clearTimeout(this.returnToPlaybackTimeout);
       
-      if (this.playbackActive && !omitMovement) {
-        this.moveToNode(this.currentNode, true);
+      if (this.flowchartStore.playbackActive && !omitMovement) {
+        this.moveToNode(this.flowchartStore.currentNode, true);
       }
     },
 
@@ -786,11 +683,11 @@ export default {
       }
 
       const currentState = {
-        nodeId: this.currentNodeId,
-        narrationNodeIndex: this.currentNarrationNodeIndex,
-        narrationChapterIndex: this.currentNarrationChapterIndex,
-        playbackActive: +this.playbackActive,
-        playbackPosition: this.playbackPosition,
+        nodeId: this.flowchartStore.currentNodeId,
+        narrationNodeIndex: this.flowchartStore.currentNarrationNodeIndex,
+        narrationChapterIndex: this.flowchartStore.currentNarrationChapterIndex,
+        playbackActive: +this.flowchartStore.playbackActive,
+        playbackPosition: this.flowchartStore.playbackPosition,
         chapterListVisible: +this.chapterListVisible,
         introPanelVisible: +this.introPanelVisible
       };
@@ -815,53 +712,43 @@ export default {
 
   watch: {
     // update current node ID upon change of narration node ID (which changes based on playback position)
-    currentNarrationNodeId: function() {
+    'flowchartStore.currentNarrationNodeId'() {
       // suppress updating current node ID and starting playback if state was resumed from storage and this is
       // the first narration node update (triggered by the playbackPosition being returned to the previous value)
-      if (this.resumedFromStorage && !this.firstNarrationNodeUpdateAfterResumption) {
+      if (this.flowchartStore.resumedFromLocalStorage && !this.firstNarrationNodeUpdateAfterResumption) {
         this.firstNarrationNodeUpdateAfterResumption = true;
-        // without triggering saveCurrentStateToLocalStorage here, a playbackPosition is 0 is saved until the current node updates
-        this.saveCurrentStateToLocalStorage();
         return;
       }
 
-      this.setCurrentNodeId(this.currentNarrationNodeId);
+      this.setCurrentNodeId(this.flowchartStore.currentNarrationNodeId);
 
       // start playback if not active already (happens when jumpNarrationToNode triggered)
-      if (!this.playbackActive) {
+      if (!this.flowchartStore.playbackActive) {
         this.startPlayback(true);
       }
     },
 
     // when the narration index changes, mark that timestamp/event as listened
-    currentNarrationNodeIndex: function() {
-      this.markTimestampAsListened(this.currentNarrationNodeIndex);
+    'flowchartStore.currentNarrationNodeIndex'() {
+      this.markTimestampAsListened(this.flowchartStore.currentNarrationNodeIndex);
     },
 
     // when the narration chapter index changes, mark that chapter as listened
-    currentNarrationChapterIndex: function() {
-      this.markChapterAsListened(this.currentNarrationChapterIndex);
+    'flowchartStore.currentNarrationChapterIndex'() {
+      this.markChapterAsListened(this.flowchartStore.currentNarrationChapterIndex);
     },
 
-    // when the node ID changes for the first time, unhide reset prompt; also log any changes
-    currentNodeId: function() {
-      if (!this.resetPromptVisible) {
-        setTimeout(() => {
-          this.resetPromptVisible = true;
-        }, this.resetPromptDelayAfterInteraction);
-      }
-
+    // log certain properties changing
+    'flowchartStore.currentNodeId'() {
       this.logEvent('update_nodeId');
     },
-
-    // log more properties changing
-    playbackActive: function() {
+    'flowchartStore.playbackActive'() {
       this.logEvent('update_playbackActive');
     },
-    chapterListVisible: function() {
+    chapterListVisible() {
       this.logEvent('update_chapterListVisible');
     },
-    introPanelVisible: function() {
+    introPanelVisible() {
       this.logEvent('update_introPanelVisible');
     }
   },
@@ -873,6 +760,7 @@ export default {
     // append session ID to form URL
     this.formUrl = this.formUrl + '?id=' + this.sessionId;
 
+    // disable logging if URL parameter is found
     if (window.location.search === '?nolog') {
       this.loggingEnabled = false;
     }
@@ -886,22 +774,13 @@ export default {
     }
 
     // attempt to get state from previous session
-    if (localStorage.getItem('currentNodeId')) {
-      this.resumedFromStorage = true;
-      this.resetPromptVisible = true;
-
-      this.currentNodeId = JSON.parse(localStorage.getItem('currentNodeId'));
-      this.teasedItems = JSON.parse(localStorage.getItem('teasedItems'));
-      this.revealedItems = JSON.parse(localStorage.getItem('revealedItems'));
-      this.listenedTimestampIndexes = JSON.parse(localStorage.getItem('listenedTimestampIndexes'));
-      this.listenedChapterIndexes = JSON.parse(localStorage.getItem('listenedChapterIndexes'));
-    }
+    this.resumeFromLocalStorage();
   },
 
   mounted() {
     // if resumed from storage, set currentTime of media to playbackPosition from storage
-    if (this.resumedFromStorage) {
-      this.setPlaybackPosition(this.playbackPosition);
+    if (this.flowchartStore.resumedFromLocalStorage) {
+      this.setPlaybackPosition(this.flowchartStore.playbackPosition);
     }
 
     // make spacebar trigger togglePlayback
@@ -911,10 +790,10 @@ export default {
         
         this.togglePlayback();
         this.logEvent('input_spacebar');
-      } else if (event.key === 'Enter' && this.jumpActionAvailable) {
+      } else if (event.key === 'Enter' && this.flowchartStore.jumpActionAvailable) {
         event.preventDefault();
 
-        this.jumpNarrationToNode(this.currentNodeId);
+        this.jumpNarrationToNode(this.flowchartStore.currentNodeId);
         this.logEvent('input_enter');
       }
     });
