@@ -104,12 +104,12 @@ export default {
 
   watch: {
     // hacky way to keep the chapter list’s background blur active on Safari when controls are full-width
-    playbackActive: function() {
+    'flowchartStore.playbackActive'() {
       if (this.flowchartStore.playbackActive === false && this.$refs.chapters.style['-webkit-backdrop-filter'] !== undefined) {
         this.$refs.chapters.style['-webkit-backdrop-filter'] = `blur(${ 16 + Math.random() / 100 }px)`;
       }
     },
-    chapterListVisible: function() {
+    chapterListVisible() {
       if (this.chapterListVisible) {
         this.$refs.chapterList.querySelector('li.active').scrollIntoView({
           behavior: 'instant',
