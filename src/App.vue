@@ -327,17 +327,18 @@ export default {
       Object.entries(this.flowchartStore.flowchartNodes).forEach(([nodeId, node]) => {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
-            const differentFromCurrentNode = nodeId !== vueInstance.currentNodeId;
+            const differentFromCurrentNode = nodeId !== vueInstance.flowchartStore.currentNodeId;
 
             // stop exploration during playback; if clicked node is different from current node,
             // omit movement (since this will be taken care of by jumpNarrationToNode)
-            if (vueInstance.playbackActive && vueInstance.exploringDuringPlayback) {
+            if (vueInstance.flowchartStore.playbackActive && vueInstance.flowchartStore.exploringDuringPlayback) {
+              console.log('y');
               vueInstance.stopExplorationDuringPlayback(differentFromCurrentNode);
             }
 
             // if event is triggered during playback (and does not originate from the node already active),
             // jump narration position to that node; otherwise set node ID without affecting narration
-            if (vueInstance.playbackActive && differentFromCurrentNode) {
+            if (vueInstance.flowchartStore.playbackActive && differentFromCurrentNode) {
               vueInstance.jumpNarrationToNode(nodeId);
             } else {
               vueInstance.setCurrentNodeId(nodeId);
