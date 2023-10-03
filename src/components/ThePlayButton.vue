@@ -21,7 +21,7 @@
 import PrimaryButton from '@/components/PrimaryButton.vue';
 
 export default {
-  name: 'PlayButton',
+  name: 'ThePlayButton',
 
   components: {
     PrimaryButton

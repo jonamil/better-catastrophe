@@ -19,7 +19,7 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
-  name: 'FeedbackPrompt',
+  name: 'TheFeedbackPrompt',
 
   components: {
     PrimaryButton

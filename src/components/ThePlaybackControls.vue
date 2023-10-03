@@ -1,6 +1,6 @@
 <template>
   <div class="controls">
-    <PlayButton
+    <ThePlayButton
       class="playback"
       :class="{ playing: flowchartStore.playbackActive }"
       :state="flowchartStore.currentNodeId === flowchartStore.currentNarrationNodeId ? 'highlighted' : ''"
@@ -50,17 +50,17 @@
 <script>
 import { mapStores } from 'pinia';
 
+import ThePlayButton from '@/components/ThePlayButton.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
-import PlayButton from '@/components/PlayButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
-  name: 'PlaybackControls',
+  name: 'ThePlaybackControls',
 
   components: {
-    PrimaryButton,
-    PlayButton
+    ThePlayButton,
+    PrimaryButton
   },
 
   props: {

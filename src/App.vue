@@ -22,13 +22,13 @@
     >
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
-    <IntroPanel
+    <TheIntroPanel
       :introPanelVisible="introPanelVisible"
       :formUrl="formUrl"
       @togglePlayback="togglePlayback()"
       @toggleIntroPanel="toggleIntroPanel()"
     />
-    <PlaybackControls
+    <ThePlaybackControls
       :chapterListVisible="chapterListVisible"
       :introPanelVisible="introPanelVisible"
       @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
@@ -37,7 +37,7 @@
       @jumpNarrationToChapter="jumpNarrationToChapter($event)"
       @jumpNarrationToNode="jumpNarrationToNode($event)"
     />
-    <FeedbackPrompt
+    <TheFeedbackPrompt
       :formUrl="formUrl"
     />
   </main>
@@ -47,9 +47,9 @@
 import { mapStores, mapActions } from 'pinia';
 import { scaleLinear, easeExpOut } from 'd3';
 
-import IntroPanel from '@/components/IntroPanel.vue';
-import PlaybackControls from '@/components/PlaybackControls.vue';
-import FeedbackPrompt from '@/components/FeedbackPrompt.vue';
+import TheIntroPanel from '@/components/TheIntroPanel.vue';
+import ThePlaybackControls from '@/components/ThePlaybackControls.vue';
+import TheFeedbackPrompt from '@/components/TheFeedbackPrompt.vue';
 import InlineSvg from 'vue-inline-svg';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
@@ -60,9 +60,9 @@ export default {
   name: 'App',
 
   components: {
-    IntroPanel,
-    PlaybackControls,
-    FeedbackPrompt,
+    TheIntroPanel,
+    ThePlaybackControls,
+    TheFeedbackPrompt,
     InlineSvg
   },
 

@@ -54,7 +54,7 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
-  name: 'IntroPanel',
+  name: 'TheIntroPanel',
 
   components: {
     PrimaryButton
