@@ -1,40 +1,38 @@
 <template>
-  <main>
-    <div
-      ref="container"
-      class="flowchart"
-      @mousedown="hideChapterListAndIntroPanel()"
-    >
-      <InlineSvg
-        :src="flowchartAsset"
-        :class="{ ready: flowchartElement }"
-        @loaded="flowchartReady($event)"
-      />
-    </div>
-    <audio
-      ref="media"
-      @loadedmetadata="flowchartStore.playbackDuration = $event.target.duration"
-      @timeupdate="flowchartStore.playbackPosition = $event.target.currentTime"
-      @stalled="flowchartStore.mediaBuffering = true"
-      @loadeddata="flowchartStore.mediaBuffering = false"
-      @playing="flowchartStore.mediaBuffering = false"
-      @ended="stopPlayback(true)"
-    >
-      <source src="@/data/narration.m4a" type="audio/mp4" />
-    </audio>
-    <TheIntroPanel
-      @togglePlayback="togglePlayback()"
-      @toggleIntroPanel="toggleIntroPanel()"
+  <div
+    ref="container"
+    class="flowchart"
+    @mousedown="hideChapterListAndIntroPanel()"
+  >
+    <InlineSvg
+      :src="flowchartAsset"
+      :class="{ ready: flowchartElement }"
+      @loaded="flowchartReady($event)"
     />
-    <ThePlaybackControls
-      @togglePlayback="togglePlayback()"
-      @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
-      @toggleChapterList="toggleChapterList()"
-      @jumpNarrationToChapter="jumpNarrationToChapter($event)"
-      @jumpNarrationToNode="jumpNarrationToNode($event)"
-    />
-    <TheFeedbackPrompt />
-  </main>
+  </div>
+  <audio
+    ref="media"
+    @loadedmetadata="flowchartStore.playbackDuration = $event.target.duration"
+    @timeupdate="flowchartStore.playbackPosition = $event.target.currentTime"
+    @stalled="flowchartStore.mediaBuffering = true"
+    @loadeddata="flowchartStore.mediaBuffering = false"
+    @playing="flowchartStore.mediaBuffering = false"
+    @ended="stopPlayback(true)"
+  >
+    <source src="@/data/narration.m4a" type="audio/mp4" />
+  </audio>
+  <TheIntroPanel
+    @togglePlayback="togglePlayback()"
+    @toggleIntroPanel="toggleIntroPanel()"
+  />
+  <ThePlaybackControls
+    @togglePlayback="togglePlayback()"
+    @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
+    @toggleChapterList="toggleChapterList()"
+    @jumpNarrationToChapter="jumpNarrationToChapter($event)"
+    @jumpNarrationToNode="jumpNarrationToNode($event)"
+  />
+  <TheFeedbackPrompt />
 </template>
 
 <script>
@@ -781,10 +779,14 @@ export default {
 @import '@/assets/variables.css';
 
 body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background: var(--background-color);
 }
 
 #app {
+  display: contents;
   font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
   font-size: 15px;
   text-rendering: optimizeLegibility;
