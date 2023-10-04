@@ -84,16 +84,16 @@ export const useFlowchartStore = defineStore('flowchart', {
     currentNarrationChapter(state) {
       return state.narrationChapters[this.currentNarrationChapterIndex];
     },
-    // determines whether jump action is visible (i.e. current node differs from current narration node)
-    jumpActionVisible(state) {
+    // determines whether current node has moved away from narration (i.e. current node differs from current narration node)
+    movedAwayFromNarration(state) {
       return !state.playbackActive && state.currentNodeId !== this.currentNarrationNodeId;
     },
     // determines whether jump action is available (i.e. if jumpNarrationToNode action can be triggered from current node)
     jumpActionAvailable(state) {
-      return this.jumpActionVisible && state.narrationTimestamps.findIndex(event => event[0] === state.currentNodeId) !== -1;
+      return this.movedAwayFromNarration && state.narrationTimestamps.findIndex(event => event[0] === state.currentNodeId) !== -1;
     },
     // determines whether feedback prompt is visible (revealed after threshold of revealed items has been reached)
-    feedbackPromptVisible() {
+    feedbackPromptAvailable() {
       return this.revealedItems.length >= 64;
     },
   },

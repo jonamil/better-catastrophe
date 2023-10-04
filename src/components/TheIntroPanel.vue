@@ -3,10 +3,10 @@
     class="open"
     icon="info"
     title="Open introduction"
-    :tabindex="introPanelVisible ? -1 : ''"
+    :tabindex="viewStore.introPanelVisible ? -1 : ''"
     @click="$emit('toggleIntroPanel')"
   />
-  <div ref="intro" class="intro" :class="{ visible: introPanelVisible }">
+  <div ref="intro" class="intro" :class="{ visible: viewStore.introPanelVisible }">
     <div class="outer">
       <div class="inner">
         <h1>I Want A Better Catastrophe</h1>
@@ -22,7 +22,7 @@
         <h3>Background</h3>
         <p>Use the button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe”</a>. This interactive online version uses an experimental interface that was created in an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
         <h3>Feedback</h3>
-        <p>If you have thoughts, ideas, and suggestions for this interface, please fill out this <a class="fo" :href="formUrl" target="_blank">short feedback form</a>.</p>
+        <p>If you have thoughts, ideas, and suggestions for this interface, please fill out this <a class="fo" :href="feedbackStore.formUrl" target="_blank">short feedback form</a>.</p>
         <h3>Credits</h3>
         <p>
           <strong><a class="ab" href="https://andrewboyd.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
@@ -47,22 +47,19 @@
 </template>
 
 <script>
-import { mapState, mapWritableState, mapActions } from 'pinia';
+import { mapStores, mapState, mapWritableState, mapActions } from 'pinia';
 
 import PrimaryButton from '@/components/PrimaryButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
+import { useViewStore } from '@/stores/ViewStore.js';
+import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'TheIntroPanel',
 
   components: {
     PrimaryButton
-  },
-
-  props: {
-    introPanelVisible: Boolean,
-    formUrl: String
   },
 
   emits: [
@@ -77,6 +74,10 @@ export default {
   },
   
   computed: {
+    ...mapStores(
+      useViewStore,
+      useFeedbackStore
+    ),
     ...mapState(useFlowchartStore, [
       'currentNodeId'
     ]),
@@ -88,6 +89,9 @@ export default {
   methods: {
     ...mapActions(useFlowchartStore, [
       'clearLocalStorageAndReload'
+    ]),
+    ...mapActions(useFeedbackStore, [
+      'logEvent'
     ])
   },
 
@@ -101,8 +105,8 @@ export default {
       }
     },
     // make interactive elements non-keyboard-selectable when intro panel is hidden
-    introPanelVisible() {
-      if (this.introPanelVisible) {
+    'viewStore.introPanelVisible'() {
+      if (this.viewStore.introPanelVisible) {
         this.$refs.intro.querySelectorAll('a, button').forEach(element => {
           element.removeAttribute('tabindex');
         });
@@ -111,6 +115,8 @@ export default {
           element.setAttribute('tabindex', -1);
         });
       }
+
+      this.logEvent('update_introPanelVisible');
     }
   }
 }

@@ -1,6 +1,6 @@
 <template>
-  <div class="feedback" :class="{ visible: feedbackPromptVisible }">
-    <div class="prompt" :class="{ attention }">
+  <div class="feedback" :class="{ visible: feedbackPromptAvailable }">
+    <div class="prompt" :class="{ attention: drawAttention }">
       <span>Thank you for trying out the flowchart interface! Please help our research by filling out this short feedback form.</span>
     </div>
     <PrimaryButton
@@ -17,6 +17,7 @@ import { mapState } from 'pinia';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
+import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'TheFeedbackPrompt',
@@ -25,19 +26,18 @@ export default {
     PrimaryButton
   },
 
-  props: {
-    formUrl: String
-  },
-
   data() {
     return {
-      attention: false
+      drawAttention: false
     }
   },
 
   computed: {
     ...mapState(useFlowchartStore, [
-      'feedbackPromptVisible'
+      'feedbackPromptAvailable'
+    ]),
+    ...mapState(useFeedbackStore, [
+      'formUrl'
     ])
   },
 
@@ -48,11 +48,11 @@ export default {
   },
 
   watch: {
-    feedbackPromptVisible: function() {
-      this.attention = true;
+    feedbackPromptAvailable() {
+      this.drawAttention = true;
 
       setTimeout(() => {
-        this.attention = false;
+        this.drawAttention = false;
       }, 6500);
     }
   }

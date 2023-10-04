@@ -23,23 +23,17 @@
       <source src="@/data/narration.m4a" type="audio/mp4" />
     </audio>
     <TheIntroPanel
-      :introPanelVisible="introPanelVisible"
-      :formUrl="formUrl"
       @togglePlayback="togglePlayback()"
       @toggleIntroPanel="toggleIntroPanel()"
     />
     <ThePlaybackControls
-      :chapterListVisible="chapterListVisible"
-      :introPanelVisible="introPanelVisible"
-      @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
       @togglePlayback="togglePlayback()"
+      @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
       @toggleChapterList="toggleChapterList()"
       @jumpNarrationToChapter="jumpNarrationToChapter($event)"
       @jumpNarrationToNode="jumpNarrationToNode($event)"
     />
-    <TheFeedbackPrompt
-      :formUrl="formUrl"
-    />
+    <TheFeedbackPrompt />
   </main>
 </template>
 
@@ -53,6 +47,8 @@ import TheFeedbackPrompt from '@/components/TheFeedbackPrompt.vue';
 import InlineSvg from 'vue-inline-svg';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
+import { useViewStore } from '@/stores/ViewStore.js';
+import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 import flowchartAsset from '@/assets/flowchart.svg';
 
@@ -75,10 +71,6 @@ export default {
       flowchartAsset,
       flowchartContainer: undefined,
       flowchartElement: undefined,
-
-      // state of control UI
-      chapterListVisible: false,
-      introPanelVisible: true,
 
       // whether narration node update is the first after resumption from local storage
       firstNarrationNodeUpdateAfterResumption: false,
@@ -123,11 +115,6 @@ export default {
       introPanelWidth: 416,
       fullWidthIntroPanelThreshold: 600,
       horizontalCenterOffset: 24,
-      
-      // logging and feedback form URLs
-      loggingEnabled: true,
-      loggingUrl: './log.php',
-      formUrl: 'https://tally.so/r/wvr1AD',
 
       // wakeLock support and reference
       wakeLockSupported: false,
@@ -136,8 +123,12 @@ export default {
   },
 
   computed: {
-    // properties from FlowchartStore
-    ...mapStores(useFlowchartStore),
+    // properties from Pinia stores
+    ...mapStores(
+      useFlowchartStore,
+      useViewStore,
+      useFeedbackStore
+    ),
     // calculates scale factor for flowchart element extent based on window dimensions
     zoomScale() {
       return this.scaleFromWindowSideLength(this.shortestWindowSideLength);
@@ -156,6 +147,11 @@ export default {
     ...mapActions(useFlowchartStore, [
       'saveToLocalStorage',
       'resumeFromLocalStorage'
+    ]),
+
+    ...mapActions(useFeedbackStore, [
+      'disableLoggingIfQuerySet',
+      'logEvent'
     ]),
 
     // flowchart inline SVG loaded
@@ -371,7 +367,7 @@ export default {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
         x: (itemPosition.x + itemPosition.width / 2) * this.zoomScale - (
-          this.introPanelVisible && this.windowWidth > this.fullWidthIntroPanelThreshold
+          this.viewStore.introPanelVisible && this.windowWidth > this.fullWidthIntroPanelThreshold
             ? this.introPanelWidth / 2 - this.horizontalCenterOffset
             : 0
         ),
@@ -607,8 +603,6 @@ export default {
       clearTimeout(this.returnToPlaybackTimeout);
 
       this.returnToPlaybackTimeout = setTimeout(this.stopExplorationDuringPlayback, this.returnToPlaybackDelay);
-
-      this.logEvent('call_startExplorationDuringPlayback');
     },
 
     // stop exploration during playback
@@ -619,26 +613,24 @@ export default {
       if (this.flowchartStore.playbackActive && !omitMovement) {
         this.moveToNode(this.flowchartStore.currentNode, true);
       }
-
-      this.logEvent('call_stopExplorationDuringPlayback');
     },
 
     // toggle visibility of chapter list
     toggleChapterList(forceClose = false) {
-      if (forceClose || this.chapterListVisible) {
-        this.chapterListVisible = false;
+      if (forceClose || this.viewStore.chapterListVisible) {
+        this.viewStore.chapterListVisible = false;
       } else {
-        this.chapterListVisible = true;
+        this.viewStore.chapterListVisible = true;
         this.toggleIntroPanel(true);
       }
     },
 
     // toggle visibility of intro panel
     toggleIntroPanel(forceClose = false) {
-      if (forceClose || this.introPanelVisible) {
-        this.introPanelVisible = false;
+      if (forceClose || this.viewStore.introPanelVisible) {
+        this.viewStore.introPanelVisible = false;
       } else {
-        this.introPanelVisible = true;
+        this.viewStore.introPanelVisible = true;
         this.stopPlayback();
         this.toggleChapterList(true);
       }
@@ -679,40 +671,6 @@ export default {
           this.wakeLock = null;
         })
       }
-    },
-
-    // log an event via a post request
-    logEvent(eventType, additionalData = {}) {
-      if (!this.loggingEnabled) {
-        return;
-      }
-
-      const currentState = {
-        nodeId: this.flowchartStore.currentNodeId,
-        narrationNodeIndex: this.flowchartStore.currentNarrationNodeIndex,
-        narrationChapterIndex: this.flowchartStore.currentNarrationChapterIndex,
-        playbackActive: +this.flowchartStore.playbackActive,
-        playbackPosition: this.flowchartStore.playbackPosition,
-        chapterListVisible: +this.chapterListVisible,
-        introPanelVisible: +this.introPanelVisible,
-        exploringDuringPlayback: +this.flowchartStore.exploringDuringPlayback
-      };
-
-      fetch(this.loggingUrl, {
-        method: 'post',
-        body: JSON.stringify({
-          eventType,
-          session: this.sessionId,
-          timestamp: Math.round(performance.now()),
-          ...currentState,
-          ...additionalData
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).catch(error => {
-        console.log(error);
-      });
     }
   },
 
@@ -750,12 +708,6 @@ export default {
     },
     'flowchartStore.playbackActive'() {
       this.logEvent('update_playbackActive');
-    },
-    chapterListVisible() {
-      this.logEvent('update_chapterListVisible');
-    },
-    introPanelVisible() {
-      this.logEvent('update_introPanelVisible');
     }
   },
 
@@ -764,12 +716,7 @@ export default {
     this.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
 
     // append session ID to form URL
-    this.formUrl = this.formUrl + '?id=' + this.sessionId;
-
-    // disable logging if URL parameter is found
-    if (window.location.search === '?nolog') {
-      this.loggingEnabled = false;
-    }
+    this.feedbackStore.formUrl = this.feedbackStore.formUrl + '?id=' + this.sessionId;
 
     // d3 scaleLinear method to map window dimensions to min/max scale thresholds
     this.scaleFromWindowSideLength = scaleLinear(this.scaleParameters.domain, this.scaleParameters.range).clamp(true);

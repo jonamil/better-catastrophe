@@ -9,10 +9,10 @@
       :title="playButtonTitle"
       @click="$emit(flowchartStore.exploringDuringPlayback ? 'stopExplorationDuringPlayback' : 'togglePlayback')"
     />
-    <div ref="chapters" class="chapters" :class="{ shadow: !introPanelVisible, playing: flowchartStore.playbackActive, open: chapterListVisible }">
+    <div ref="chapters" class="chapters" :class="{ shadow: !viewStore.introPanelVisible, playing: flowchartStore.playbackActive, open: viewStore.chapterListVisible }">
       <div
         class="preview"
-        :title="chapterListVisible ? 'Close narration log' : 'Open narration log'"
+        :title="viewStore.chapterListVisible ? 'Close narration log' : 'Open narration log'"
         @click="$emit('toggleChapterList')"
       >
         <span v-if="flowchartStore.currentNarrationChapter">
@@ -37,7 +37,7 @@
     </div>
     <PrimaryButton
       class="jump"
-      :class="{ visible: flowchartStore.jumpActionVisible, shadow: !introPanelVisible }"
+      :class="{ visible: flowchartStore.movedAwayFromNarration, shadow: !viewStore.introPanelVisible }"
       :state="flowchartStore.jumpActionAvailable ? 'highlighted' : 'disabled'"
       icon="jump"
       :title="flowchartStore.jumpActionAvailable ? 'Resume narration from selected item' : 'Narration not available for selected item'"
@@ -48,12 +48,14 @@
 </template>
 
 <script>
-import { mapStores } from 'pinia';
+import { mapStores, mapActions } from 'pinia';
 
 import ThePlayButton from '@/components/ThePlayButton.vue';
 import PrimaryButton from '@/components/PrimaryButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
+import { useViewStore } from '@/stores/ViewStore.js';
+import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'ThePlaybackControls',
@@ -61,11 +63,6 @@ export default {
   components: {
     ThePlayButton,
     PrimaryButton
-  },
-
-  props: {
-    chapterListVisible: Boolean,
-    introPanelVisible: Boolean
   },
 
   emits: [
@@ -77,7 +74,6 @@ export default {
   ],
 
   computed: {
-    ...mapStores(useFlowchartStore),
     playButtonIcon() {
       if (this.flowchartStore.mediaBuffering) {
         return 'buffering';
@@ -100,6 +96,16 @@ export default {
         return 'Pause narration playback';
       }
     }
+    ...mapStores(
+      useFlowchartStore,
+      useViewStore
+    )
+  },
+
+  methods: {
+    ...mapActions(useFeedbackStore, [
+      'logEvent'
+    ])
   },
 
   watch: {
@@ -109,13 +115,15 @@ export default {
         this.$refs.chapters.style['-webkit-backdrop-filter'] = `blur(${ 16 + Math.random() / 100 }px)`;
       }
     },
-    chapterListVisible() {
-      if (this.chapterListVisible) {
+    'viewStore.chapterListVisible'() {
+      if (this.viewStore.chapterListVisible) {
         this.$refs.chapterList.querySelector('li.active').scrollIntoView({
           behavior: 'instant',
           block: 'center'
         });
       }
+
+      this.logEvent('update_chapterListVisible');
     }
   }
 }
