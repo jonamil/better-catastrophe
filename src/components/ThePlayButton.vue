@@ -1,8 +1,9 @@
 <template>
   <div>
     <PrimaryButton
-      :state="state"
-      :icon="icon"
+      :state="!flowchartStore.movedAwayFromNarration ? 'highlighted' : ''"
+      :icon="buttonIcon"
+      :title="buttonTitle"
     />
     <svg width="64" height="64">
       <circle
@@ -10,15 +11,19 @@
         cx="32"
         cy="32"
         stroke-width="3"
-        :stroke-dasharray="circumference + ' ' +  circumference"
-        :stroke-dashoffset="offset"
+        :stroke-dasharray="progressCircumference + ' ' +  progressCircumference"
+        :stroke-dashoffset="progressOffset"
       />
     </svg>
   </div>
 </template>
 
 <script>
+import { mapStores } from 'pinia';
+
 import PrimaryButton from '@/components/PrimaryButton.vue';
+
+import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 
 export default {
   name: 'ThePlayButton',
@@ -27,30 +32,40 @@ export default {
     PrimaryButton
   },
 
-  props: {
-    state: {
-      type: String,
-      default: ''
-    },
-    icon: {
-      type: String,
-      default: ''
-    },
-    progress: {
-      type: Number,
-      default: 0
-    }
-  },
-
   data() {
     return {
-      circumference: 30.5 * 2 * Math.PI
+      progressCircumference: 30.5 * 2 * Math.PI
     }
   },
 
   computed: {
-    offset() {
-      return this.circumference - this.progress * this.circumference;
+    ...mapStores(
+      useFlowchartStore
+    ),
+    progressOffset() {
+      return this.progressCircumference - this.flowchartStore.playbackProgress * this.progressCircumference;
+    },
+    buttonIcon() {
+      if (this.flowchartStore.mediaBuffering) {
+        return 'buffering';
+      } else if (!this.flowchartStore.playbackActive) {
+        return 'play';
+      } else if (this.flowchartStore.exploringDuringPlayback) {
+        return 'return';
+      } else {
+        return 'pause';
+      }
+    },
+    buttonTitle() {
+      if (this.flowchartStore.mediaBuffering) {
+        return 'Narration audio loading…';
+      } else if (!this.flowchartStore.playbackActive) {
+        return 'Resume narration playback';
+      } else if (this.flowchartStore.exploringDuringPlayback) {
+        return 'Return to playback location';
+      } else {
+        return 'Pause narration playback';
+      }
     }
   }
 }

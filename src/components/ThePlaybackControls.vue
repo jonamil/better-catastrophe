@@ -2,11 +2,6 @@
   <div class="controls">
     <ThePlayButton
       class="playback"
-      :class="{ playing: flowchartStore.playbackActive }"
-      :state="flowchartStore.currentNodeId === flowchartStore.currentNarrationNodeId ? 'highlighted' : ''"
-      :progress="flowchartStore.playbackProgress"
-      :icon="playButtonIcon"
-      :title="playButtonTitle"
       @click="$emit(flowchartStore.exploringDuringPlayback ? 'stopExplorationDuringPlayback' : 'togglePlayback')"
     />
     <div ref="chapters" class="chapters" :class="{ shadow: !viewStore.introPanelVisible, playing: flowchartStore.playbackActive, open: viewStore.chapterListVisible }">
@@ -74,28 +69,6 @@ export default {
   ],
 
   computed: {
-    playButtonIcon() {
-      if (this.flowchartStore.mediaBuffering) {
-        return 'buffering';
-      } else if (!this.flowchartStore.playbackActive) {
-        return 'play';
-      } else if (this.flowchartStore.exploringDuringPlayback) {
-        return 'return';
-      } else {
-        return 'pause';
-      }
-    },
-    playButtonTitle() {
-      if (this.flowchartStore.mediaBuffering) {
-        return 'Narration audio loading…';
-      } else if (!this.flowchartStore.playbackActive) {
-        return 'Resume narration playback';
-      } else if (this.flowchartStore.exploringDuringPlayback) {
-        return 'Return to playback location';
-      } else {
-        return 'Pause narration playback';
-      }
-    }
     ...mapStores(
       useFlowchartStore,
       useViewStore
