@@ -61,11 +61,11 @@ export default {
   },
 
   emits: [
-    'stopExplorationDuringPlayback',
-    'togglePlayback',
-    'toggleChapterList',
+    'jumpNarrationToNode',
     'jumpNarrationToChapter',
-    'jumpNarrationToNode'
+    'togglePlayback',
+    'stopExplorationDuringPlayback',
+    'toggleChapterList'
   ],
 
   computed: {
