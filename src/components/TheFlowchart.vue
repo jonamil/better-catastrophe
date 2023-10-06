@@ -274,19 +274,21 @@ export default {
       Object.entries(this.flowchartStore.flowchartNodes).forEach(([nodeId, node]) => {
         node.element.addEventListener('click', function() {
           if (this.classList.contains('revealed')) {
-            const differentFromCurrentNode = nodeId !== vueInstance.flowchartStore.currentNodeId;
-
             // stop exploration during playback if active
             if (vueInstance.flowchartStore.playbackActive && vueInstance.flowchartStore.exploringDuringPlayback) {
               vueInstance.$emit('stopExplorationDuringPlayback');
             }
 
-            // if event is triggered during playback (and does not originate from the node already active),
-            // jump narration position to that node; otherwise set node ID without affecting narration
-            if (vueInstance.flowchartStore.playbackActive && differentFromCurrentNode) {
-              vueInstance.$emit('jumpNarrationToNode', nodeId);
+            // if clicked node is different from current node, either jump narration to that node (if playback is active)
+            // or set node ID without affecting narration; otherwise re-center current node
+            if (nodeId !== vueInstance.flowchartStore.currentNodeId) {
+              if (vueInstance.flowchartStore.playbackActive) {
+                vueInstance.$emit('jumpNarrationToNode', nodeId);
+              } else {
+                vueInstance.$emit('setCurrentNodeId', nodeId);
+              }
             } else {
-              vueInstance.$emit('setCurrentNodeId', nodeId);
+              vueInstance.moveToNode(vueInstance.flowchartStore.currentNode, true);
             }
           } else if (this.classList.contains('teased')) {
             // if teased node is clicked, trigger the pulse animation for all incoming nodes
