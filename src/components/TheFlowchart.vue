@@ -482,8 +482,14 @@ export default {
       this.markChapterAsListened(this.flowchartStore.currentNarrationChapterIndex);
     },
 
-    // mark first chapter as listened if playback was started right from the start
+    // when playback is started, move to current node (if current node
+    // does not change, no movement is otherwise initiated)
     'flowchartStore.playbackActive'() {
+      if (this.flowchartStore.playbackActive) {
+        this.moveToNode(this.flowchartStore.currentNode);
+      }
+
+      // mark first chapter as listened if playback was started right from the start
       if (this.flowchartStore.listenedChapterIndexes.length === 0) {
         this.markChapterAsListened(this.flowchartStore.currentNarrationChapterIndex);
       }
