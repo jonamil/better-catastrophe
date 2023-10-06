@@ -46,6 +46,14 @@ export const useFlowchartStore = defineStore('flowchart', {
         return 0;
       }
     },
+    // formatted playback duration (mm:ss)
+    prettyPlaybackDuration(state) {
+      return formatTime(state.playbackDuration);
+    },
+    // formatted playback position (mm:ss)
+    prettyPlaybackPosition(state) {
+      return formatTime(state.playbackPosition);
+    },
     // current node object
     currentNode(state) {
       return state.flowchartNodes[state.currentNodeId];
@@ -122,3 +130,11 @@ export const useFlowchartStore = defineStore('flowchart', {
     }
   }
 });
+
+function formatTime(seconds) {
+  seconds = Math.floor(seconds);
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const remainder = (seconds % 60).toString().padStart(2, '0');
+
+  return minutes + ':' + remainder;
+}

@@ -6,12 +6,16 @@
     />
     <div ref="chapters" class="chapters" :class="{ shadow: !viewStore.introPanelVisible, playing: flowchartStore.playbackActive, open: viewStore.chapterListVisible }">
       <div
-        class="preview"
-        :title="viewStore.chapterListVisible ? 'Close narration log' : 'Open narration log'"
-        @click="$emit('toggleChapterList')"
+        class="drawer"
+        :title="flowchartStore.playbackActive ? 'Pause narration playback' : (viewStore.chapterListVisible ? 'Close narration log' : 'Open narration log')"
+        @click="$emit(flowchartStore.playbackActive ? 'togglePlayback' : 'toggleChapterList')"
       >
-        <span v-if="flowchartStore.currentNarrationChapter">
+        <span v-if="flowchartStore.currentNarrationChapter" class="chapter">
           {{ flowchartStore.currentNarrationChapter.label }}
+        </span>
+        <span class="time">
+          {{ flowchartStore.prettyPlaybackPosition }}
+          <em>{{ flowchartStore.prettyPlaybackDuration }}</em>
         </span>
       </div>
       <ul ref="chapterList">
@@ -148,13 +152,27 @@ export default {
     }
 
     &.playing {
-      width: 64px;
+      width: 150px;
+
+      .drawer {
+        span {
+          &.chapter {
+            visibility: hidden;
+            opacity: 0;
+          }
+
+          &.time {
+            visibility: visible;
+            opacity: 1;
+          }
+        }
+      }
     }
 
     &:not(.playing).open {
       height: 336px;
 
-      .preview {
+      .drawer {
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
 
         &:after {
@@ -163,7 +181,7 @@ export default {
       }
     }
 
-    .preview {
+    .drawer {
       position: absolute;
       display: flex;
       align-items: center;
@@ -197,6 +215,20 @@ export default {
         width: 100%;
         margin-right: 24px;
         padding-bottom: 1px;
+        transition: visibility var(--transition-duration) var(--transition-timing), opacity var(--transition-duration) var(--transition-timing);
+
+        &.time {
+          position: absolute;
+          visibility: hidden;
+          opacity: 0;
+          line-height: 18px;
+
+          em {
+            display: block;
+            font-style: normal;
+            color: rgba(255,255,255,0.35);
+          }
+        }
       }
     }
 
@@ -307,17 +339,22 @@ export default {
       width: unset;
 
       &.playing {
-        flex: 0;
-        width: 64px;
+        // flex: 0;
+        max-width: 150px;
+
+        .drawer:after {
+          display: none;
+        }
       }
 
-      .preview {
+      .drawer {
         box-sizing: border-box;
         width: calc(100% - 32px);
 
         span {
           -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 90%);
           mask-image: linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 90%);
+          transition: none;
         }
       }
 
