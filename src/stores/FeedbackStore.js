@@ -5,9 +5,15 @@ import { useViewStore } from '@/stores/ViewStore.js';
 
 export const useFeedbackStore = defineStore('feedback', {
   state: () => ({
+    sessionId: '',
     loggingUrl: './log.php',
-    formUrl: 'https://tally.so/r/wvr1AD'
+    initialFormUrl: 'https://tally.so/r/wvr1AD'
   }),
+  getters: {
+    formUrl(state) {
+      return state.initialFormUrl + '?id=' + state.sessionId;
+    }
+  },
   actions: {
     // log an event via a post request
     logEvent(eventType, additionalData = {}) {

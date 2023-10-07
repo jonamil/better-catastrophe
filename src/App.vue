@@ -57,9 +57,6 @@ export default {
 
   data() {
     return {
-      // unique session ID
-      sessionId: undefined,
-
       // return to playback timeout reference and auto-return delay
       returnToPlaybackTimeout: undefined,
       returnToPlaybackDelay: 8000,
@@ -249,10 +246,7 @@ export default {
 
   created() {
     // generate unique session ID for logging
-    this.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
-
-    // append session ID to form URL
-    this.feedbackStore.formUrl = this.feedbackStore.formUrl + '?id=' + this.sessionId;
+    this.feedbackStore.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
     
     // set wakeLockSupported if supported
     if ('wakeLock' in navigator) {
