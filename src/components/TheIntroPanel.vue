@@ -173,7 +173,7 @@ button.open {
     z-index: 1;
     bottom: 0;
     height: var(--panel-width);
-    background: linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%), linear-gradient(180deg, rgba(62,62,62,0) 0%, #3E3E3E 100%);
+    background: linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%), linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%);
   }
 
   &:after {
