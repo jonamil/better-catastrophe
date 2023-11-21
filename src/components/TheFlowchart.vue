@@ -292,13 +292,13 @@ export default {
             }
           } else if (this.classList.contains('teased')) {
             // if teased node is clicked, trigger the pulse animation for all incoming nodes
-            node.incoming.forEach(incomingNode => {
-              const nodeElement = incomingNode.node.element;
+            node.incoming.forEach(incomingObject => {
+              const incomingNode = incomingObject.node.element;
 
-              if (nodeElement.classList.contains('revealed')) {
-                nodeElement.classList.remove('pulse');
-                void nodeElement.getBBox(); // trigger reflow
-                nodeElement.classList.add('pulse');
+              if (incomingNode.classList.contains('revealed')) {
+                incomingNode.classList.remove('pulse');
+                void incomingNode.getBBox(); // trigger reflow
+                incomingNode.classList.add('pulse');
               }
             });
 
