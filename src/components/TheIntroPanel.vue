@@ -31,6 +31,8 @@
         </p>
         <h3>Logging</h3>
         <p>This website logs basic, anonymous information such as user-selected items within the chart. No personally identifiable data such as IP address, cookies, or browser specs is tracked.</p>
+        <h3>Template</h3>
+        <p>The project is powered by the <a href="https://uclab.fh-potsdam.de/interactive-flowchart/" target="_blank">Interactive Flowchart</a> template, which can be used to add interactivity and audio narration to other flowcharts.</p>
         <div class="logos">
           <a class="fh" href="https://www.fh-potsdam.de/en/" target="_blank"><img src="@/assets/fhp.svg" /></a>
           <a class="uc" href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
