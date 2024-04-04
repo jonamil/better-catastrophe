@@ -11,7 +11,7 @@
       <div class="inner">
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
-        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This flowchart is an invitation to join him on his narrative path and explore our predicament on your own.</p>
+        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This chart (and <a class="bc" href="https://bettercatastrophe.com/" target="_blank">the book</a> it originally appeared in) is an invitation to join him on his narrative path and explore our predicament on your own.</p>
         <div class="instructions">
           <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
           <div v-if="resetActionAvailable" class="reset">
@@ -19,8 +19,13 @@
             <button @click="clearLocalStorageAndReload()">Reset progress and start over</button>
           </div>
         </div>
+        <h3>How to Use</h3>
+        <p>Press the Play button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. This experimental interface is an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
         <h3>Background</h3>
-        <p>Use the button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe”</a>. This interactive online version uses an experimental interface that was created in an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
+        <p>The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe.”</a></p>
+        <a class="bc" href="https://bettercatastrophe.com/" target="_blank">
+          <img src="@/assets/book.png" />
+        </a>
         <h3>Feedback</h3>
         <p>If you have thoughts, ideas, and suggestions for this interface, please fill out this <a class="fo" :href="feedbackStore.formUrl" target="_blank">short feedback form</a>.</p>
         <h3>Credits</h3>
@@ -38,7 +43,7 @@
           <a class="uc" href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
         </div>
         <p>
-          <a href="mailto:marian.doerk@fh-potsdam.de">Contact</a> &nbsp;·&nbsp;
+          <a href="mailto:andrew@bettercatastrophe.com,hello@jona.im,marian.doerk@fh-potsdam.de?subject=I%20Want%20a%20Better%20Catastrophe%20Flowchart">Contact</a> &nbsp;·&nbsp;
           <a href="https://www.fh-potsdam.de/impressum" target="_blank">Imprint</a> &nbsp;·&nbsp;
           <a href="https://www.fh-potsdam.de/en/privacy" target="_blank">Privacy</a>
         </p>
@@ -213,6 +218,17 @@ button.open {
     > *, .instructions *:not(.reset) {
       opacity: 0;
       transition: opacity var(--transition-duration-long) var(--transition-timing);
+    }
+
+    > a {
+      display: block;
+      margin: 20px 0 40px;
+
+      img {
+        width: 100%;
+        height: 224px;
+        object-fit: contain;
+      }
     }
   }
 
