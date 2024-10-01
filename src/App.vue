@@ -30,7 +30,6 @@
     @stopExplorationDuringPlayback="stopExplorationDuringPlayback()"
     @toggleChapterList="toggleChapterList()"
   />
-  <TheFeedbackPrompt />
 </template>
 
 <script>
@@ -39,11 +38,9 @@ import { mapStores, mapActions } from 'pinia';
 import TheFlowchart from '@/components/TheFlowchart.vue';
 import TheIntroPanel from '@/components/TheIntroPanel.vue';
 import ThePlaybackControls from '@/components/ThePlaybackControls.vue';
-import TheFeedbackPrompt from '@/components/TheFeedbackPrompt.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
-import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'App',
@@ -51,8 +48,7 @@ export default {
   components: {
     TheFlowchart,
     TheIntroPanel,
-    ThePlaybackControls,
-    TheFeedbackPrompt
+    ThePlaybackControls
   },
 
   data() {
@@ -70,8 +66,7 @@ export default {
   computed: {
     ...mapStores(
       useFlowchartStore,
-      useViewStore,
-      useFeedbackStore
+      useViewStore
     )
   },
 
@@ -79,10 +74,6 @@ export default {
     ...mapActions(useFlowchartStore, [
       'saveToLocalStorage',
       'resumeFromLocalStorage'
-    ]),
-    ...mapActions(useFeedbackStore, [
-      'disableLoggingIfQuerySet',
-      'logEvent'
     ]),
 
     // update the current node ID
@@ -131,8 +122,6 @@ export default {
         this.stopPlayback();
         this.setCurrentNodeId(nodeId);
       }
-
-      this.logEvent('call_jumpNarrationToNode');
     },
 
     // jump playback position to chapter
@@ -144,8 +133,6 @@ export default {
       if (this.flowchartStore.narrationChapters[index].id === this.flowchartStore.currentNarrationNodeId) {
         this.startPlayback();
       }
-
-      this.logEvent('call_jumpNarrationToChapter');
     },
 
     // update current playback position and set currentTime of media to that position
@@ -245,9 +232,6 @@ export default {
   },
 
   created() {
-    // generate unique session ID for logging
-    this.feedbackStore.sessionId = new Date().getTime() + '_' + Math.random().toString(16).slice(2);
-    
     // set wakeLockSupported if supported
     if ('wakeLock' in navigator) {
       this.wakeLockSupported = true;
@@ -267,14 +251,10 @@ export default {
     document.addEventListener('keydown', event => {
       if (event.key === ' ' || event.key === 'Space') {
         event.preventDefault();
-        
         this.togglePlayback();
-        this.logEvent('input_spacebar');
       } else if (event.key === 'Enter' && this.flowchartStore.jumpActionAvailable) {
         event.preventDefault();
-
         this.jumpNarrationToNode(this.flowchartStore.currentNodeId);
-        this.logEvent('input_enter');
       }
     });
 
@@ -293,8 +273,6 @@ export default {
 
         return element.localName + (element.id ? '#' + element.id : '') + (element.classString ? element.classString : '');
       });
-
-      this.logEvent('input_click', { eventTarget: selectors.toString() });
     });
 
     document.addEventListener('touchstart', () => {}, true);

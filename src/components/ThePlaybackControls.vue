@@ -54,7 +54,6 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
-import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'ThePlaybackControls',
@@ -79,12 +78,6 @@ export default {
     )
   },
 
-  methods: {
-    ...mapActions(useFeedbackStore, [
-      'logEvent'
-    ])
-  },
-
   watch: {
     // hacky way to keep the chapter list’s background blur active on Safari when controls are full-width
     'flowchartStore.playbackActive'() {
@@ -99,8 +92,6 @@ export default {
           block: 'center'
         });
       }
-
-      this.logEvent('update_chapterListVisible');
     }
   }
 }

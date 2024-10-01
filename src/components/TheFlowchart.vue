@@ -9,14 +9,13 @@
 </template>
 
 <script>
-import { mapStores, mapActions } from 'pinia';
+import { mapStores } from 'pinia';
 import { scaleLinear, easeExpOut } from 'd3';
 
 import InlineSvg from 'vue-inline-svg';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
-import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 import flowchartAsset from '@/assets/flowchart.svg';
 
@@ -101,10 +100,6 @@ export default {
   },
 
   methods: {
-    ...mapActions(useFeedbackStore, [
-      'logEvent'
-    ]),
-
     // flowchart inline SVG loaded
     flowchartReady(element) {
       this.flowchartContainer = this.$refs.container;
@@ -308,8 +303,6 @@ export default {
               alert('In order to reveal this item of the flowchart, please select any item pointing here first.');
             }
           }
-
-          vueInstance.logEvent('input_clickNode');
         });
       });
     },
@@ -458,8 +451,6 @@ export default {
       } else {
         this.updateAppearance();
       }
-
-      this.logEvent('update_nodeId');
     },
 
     // update current node ID upon change of narration node ID (which changes based on playback position)
@@ -493,8 +484,6 @@ export default {
       if (this.flowchartStore.listenedChapterIndexes.length === 0) {
         this.markChapterAsListened(this.flowchartStore.currentNarrationChapterIndex);
       }
-
-      this.logEvent('update_playbackActive');
     },
 
     // move back to current node if exploration during playback ends

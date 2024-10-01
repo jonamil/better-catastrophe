@@ -26,16 +26,12 @@
         <a class="bc" href="https://bettercatastrophe.com/" target="_blank">
           <img src="@/assets/book.png" />
         </a>
-        <h3>Feedback</h3>
-        <p>If you have thoughts, ideas, and suggestions for this interface, please fill out this <a class="fo" :href="feedbackStore.formUrl" target="_blank">short feedback form</a>.</p>
         <h3>Credits</h3>
         <p>
           <strong><a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
           <strong><a class="jp" href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
           <strong><a class="md" href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
         </p>
-        <h3>Logging</h3>
-        <p>This website logs basic, anonymous information such as user-selected items within the chart. No personally identifiable data such as IP address, cookies, or browser specs is tracked.</p>
         <h3>Template</h3>
         <p>The project is powered by the <a href="https://uclab.fh-potsdam.de/interactive-flowchart/" target="_blank">Interactive Flowchart</a> template, which can be used to add interactivity and audio narration to other flowcharts.</p>
         <div class="logos">
@@ -60,7 +56,6 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
-import { useFeedbackStore } from '@/stores/FeedbackStore.js';
 
 export default {
   name: 'TheIntroPanel',
@@ -82,8 +77,7 @@ export default {
   
   computed: {
     ...mapStores(
-      useViewStore,
-      useFeedbackStore
+      useViewStore
     ),
     ...mapState(useFlowchartStore, [
       'currentNodeId'
@@ -96,9 +90,6 @@ export default {
   methods: {
     ...mapActions(useFlowchartStore, [
       'clearLocalStorageAndReload'
-    ]),
-    ...mapActions(useFeedbackStore, [
-      'logEvent'
     ])
   },
 
@@ -122,8 +113,6 @@ export default {
           element.setAttribute('tabindex', -1);
         });
       }
-
-      this.logEvent('update_introPanelVisible');
     }
   }
 }
