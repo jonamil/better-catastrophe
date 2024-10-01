@@ -4,6 +4,9 @@ import narrationTimestamps from '@/data/timestamps.json';
 
 export const useFlowchartStore = defineStore('flowchart', {
   state: () => ({
+    // language
+    flowchartLanguage: 'en',
+
     // nodes and their state
     flowchartNodes: {},
     currentNodeId: 'n001',
@@ -38,6 +41,9 @@ export const useFlowchartStore = defineStore('flowchart', {
     resetActionAvailable: false
   }),
   getters: {
+    storageKey() {
+      return 'flowchart_' + this.flowchartLanguage;
+    },
     // playback progress as percentage (with minimum value for initial progress bar visibility)
     playbackProgress(state) {
       if (state.playbackDuration !== 0 && state.playbackPosition !== 0) {
@@ -108,24 +114,30 @@ export const useFlowchartStore = defineStore('flowchart', {
   actions: {
     // save all parameters relevant for restoring the state of the chart to local storage
     saveToLocalStorage() {
+      const currentState = {};
+
       this.storedProperties.forEach((property) => {
-        localStorage.setItem(property, JSON.stringify(this[property]));
+        currentState[property] = this[property];
       });
+
+      localStorage.setItem(this.storageKey, JSON.stringify(currentState));
     },
     // attempt to get state from previous session
     resumeFromLocalStorage() {
-      if (localStorage.getItem(this.storedProperties[0])) {
+      if (localStorage.getItem(this.storageKey)) {
         this.resumedFromLocalStorage = true;
         this.resetActionAvailable = true;
 
+        const restoredState = JSON.parse(localStorage.getItem(this.storageKey));
+
         this.storedProperties.forEach((property) => {
-          this[property] = JSON.parse(localStorage.getItem(property));
+          this[property] = restoredState[property];
         });
       }
     },
     // clear local storage and reload the page
-    clearLocalStorageAndReload() {
-      localStorage.clear();
+    clearStorageKeyAndReload() {
+      localStorage.removeItem(this.storageKey);
       location.reload();
     }
   }

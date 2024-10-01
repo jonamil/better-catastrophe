@@ -9,6 +9,16 @@
   <div ref="intro" class="intro" :class="{ visible: viewStore.introPanelVisible }">
     <div class="outer">
       <div class="inner">
+        <div class="languages">
+          <a
+            v-for="(language, index) in languages"
+            :key="index"
+            :class="{ active: flowchartLanguage === language.id }"
+            :href="flowchartLanguage !== language.id ? language.path : undefined"
+          >
+            {{ language.label }}
+          </a>
+        </div>
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
         <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This chart (and <a class="bc" href="https://bettercatastrophe.com/" target="_blank">the book</a> it originally appeared in) is an invitation to join him on his narrative path and explore our predicament on your own.</p>
@@ -16,7 +26,7 @@
           <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
           <div v-if="resetActionAvailable" class="reset">
             <span>Want to re-explore from the beginning?</span>
-            <button @click="clearLocalStorageAndReload()">Reset progress and start over</button>
+            <button @click="clearStorageKeyAndReload()">Reset progress and start over</button>
           </div>
         </div>
         <h3>How to Use</h3>
@@ -57,6 +67,8 @@ import PrimaryButton from '@/components/PrimaryButton.vue';
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
 
+import languages from '@/data/languages.json';
+
 export default {
   name: 'TheIntroPanel',
 
@@ -71,6 +83,7 @@ export default {
 
   data() {
     return {
+      languages,
       resetAppearanceDelay: 500
     }
   },
@@ -80,6 +93,7 @@ export default {
       useViewStore
     ),
     ...mapState(useFlowchartStore, [
+      'flowchartLanguage',
       'currentNodeId'
     ]),
     ...mapWritableState(useFlowchartStore, [
@@ -89,7 +103,7 @@ export default {
 
   methods: {
     ...mapActions(useFlowchartStore, [
-      'clearLocalStorageAndReload'
+      'clearStorageKeyAndReload'
     ])
   },
 
@@ -201,7 +215,7 @@ button.open {
   .inner {
     position: relative;
     width: var(--panel-width);
-    padding: 24px 28px var(--panel-width);
+    padding: 16px 28px var(--panel-width);
     box-sizing: border-box;
 
     > *, .instructions *:not(.reset) {
@@ -221,9 +235,48 @@ button.open {
     }
   }
 
+  .languages {
+    display: inline-block;
+    margin-left: -2px;
+    border-radius: 64px;
+    background-color: rgba(111,111,111,0.75);
+    transition:
+      opacity var(--transition-duration-long) var(--transition-timing),
+      background var(--transition-duration) var(--transition-timing);
+
+    a {
+        display: inline-block;
+        box-sizing: border-box;
+        height: 32px;
+        padding: 7px 16px;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 64px;
+        
+        color: #fff;
+        
+        &:hover {
+          color: inherit;
+        }
+
+        &:not(.active):focus-visible {
+          background: unset;
+        }
+
+        &.active {
+          color: var(--background-color);
+          background-color: #fff;
+        }
+    }
+
+    &:has(a:not(.active):hover) {
+      background-color: rgba(111,111,111,0.95);
+    }
+  }
+
   h1 {
     max-width: 284px;
-    margin: 0;
+    margin: 22px 0 0;
     font-size: 30px;
     font-weight: 600;
     line-height: 100%;
@@ -358,8 +411,8 @@ button.open {
   button.close {
     position: absolute;
     opacity: 0;
-    top: 12px;
-    right: 12px;
+    top: 16px;
+    right: 16px;
     width: 32px;
     height: 32px;
     padding: 0;
