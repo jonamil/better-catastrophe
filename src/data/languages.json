@@ -2,11 +2,11 @@
   {
     "id": "en",
     "label": "English",
-    "path": "/"
+    "path": "../"
   },
   {
     "id": "de",
     "label": "Deutsch",
-    "path": "/de/"
+    "path": "./de/"
   }
 ]
