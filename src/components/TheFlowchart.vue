@@ -17,7 +17,7 @@ import InlineSvg from 'vue-inline-svg';
 import { useFlowchartStore } from '@/stores/FlowchartStore.js';
 import { useViewStore } from '@/stores/ViewStore.js';
 
-import flowchartAsset from '@/assets/flowchart.svg';
+import flowchartAsset from '@/data/flowchart.svg';
 
 export default {
   name: 'TheFlowchart',
