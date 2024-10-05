@@ -21,7 +21,7 @@
         </div>
         <h1>I Want A Better Catastrophe</h1>
         <h2>A flowchart for navigating our climate predicament</h2>
-        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This chart (and <a class="bc" href="https://bettercatastrophe.com/" target="_blank">the book</a> it originally appeared in) is an invitation to join him on his narrative path and explore our predicament on your own.</p>
+        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This chart (and <a href="https://bettercatastrophe.com/" target="_blank">the book</a> it originally appeared in) is an invitation to join him on his narrative path and explore our predicament on your own.</p>
         <div class="instructions">
           <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
           <div v-if="resetActionAvailable" class="reset">
@@ -32,21 +32,21 @@
         <h3>How to Use</h3>
         <p>Press the Play button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. This experimental interface is an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
         <h3>Background</h3>
-        <p>The original version of the flowchart is included as a printed foldout in Andrew’s new book <a class="bc" href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe.”</a></p>
-        <a class="bc" href="https://bettercatastrophe.com/" target="_blank">
+        <p>The original version of the flowchart is included as a printed foldout in Andrew’s new book <a href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe.”</a></p>
+        <a href="https://bettercatastrophe.com/" target="_blank">
           <img src="@/assets/book.png" />
         </a>
         <h3>Credits</h3>
         <p>
-          <strong><a class="ab" href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
-          <strong><a class="jp" href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
-          <strong><a class="md" href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
+          <strong><a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
+          <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
+          <strong><a href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
         </p>
         <h3>Template</h3>
         <p>The project is powered by the <a href="https://uclab.fh-potsdam.de/interactive-flowchart/" target="_blank">Interactive Flowchart</a> template, which can be used to add interactivity and audio narration to other flowcharts.</p>
         <div class="logos">
-          <a class="fh" href="https://www.fh-potsdam.de/en/" target="_blank"><img src="@/assets/fhp.svg" /></a>
-          <a class="uc" href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
+          <a href="https://www.fh-potsdam.de/en/" target="_blank"><img src="@/assets/fhp.svg" /></a>
+          <a href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
         </div>
         <p>
           <a href="mailto:andrew@bettercatastrophe.com,hello@jona.im,marian.doerk@fh-potsdam.de?subject=I%20Want%20a%20Better%20Catastrophe%20Flowchart">Contact</a> &nbsp;·&nbsp;
