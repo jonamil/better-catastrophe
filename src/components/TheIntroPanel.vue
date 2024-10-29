@@ -279,7 +279,7 @@ button.open {
     margin: 22px 0 0;
     font-size: 30px;
     font-weight: 600;
-    line-height: 100%;
+    line-height: 1;
     letter-spacing: 0.03em;
     text-transform: uppercase;
   }
@@ -289,14 +289,13 @@ button.open {
     margin: 6px 0 20px;
     font-size: 20px;
     font-weight: 400;
-    line-height: 105%;
   }
 
   h3 {
     margin: 24px 0 0;
     font-size: 15px;
     font-weight: 600;
-    line-height: 105%;
+    line-height: 1.05;
     letter-spacing: 0.01em;
     text-transform: uppercase;
   }
@@ -305,7 +304,7 @@ button.open {
     margin: 12px 0;
     font-family: 'Vesper Libre', serif;
     font-size: 16px;
-    line-height: 130%;
+    line-height: 1.3;
 
     strong {
       display: block;
