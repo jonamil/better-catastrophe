@@ -7,7 +7,7 @@
     <div ref="chapters" class="chapters" :class="{ shadow: !viewStore.introPanelVisible, playing: flowchartStore.playbackActive, open: viewStore.chapterListVisible }">
       <div
         class="drawer"
-        :title="flowchartStore.playbackActive ? 'Pause narration playback' : (viewStore.chapterListVisible ? 'Close narration log' : 'Open narration log')"
+        :title="flowchartStore.playbackActive ? 'Pause narration playback' : (viewStore.chapterListVisible ? 'Narrations-Log schließen' : 'Narrations-Log öffnen')"
         @click="$emit(flowchartStore.playbackActive ? 'togglePlayback' : 'toggleChapterList')"
       >
         <span v-if="flowchartStore.currentNarrationChapter" class="chapter">
@@ -39,7 +39,7 @@
       :class="{ visible: flowchartStore.movedAwayFromNarration, shadow: !viewStore.introPanelVisible }"
       :state="flowchartStore.jumpActionAvailable ? 'highlighted' : 'disabled'"
       icon="jump"
-      :title="flowchartStore.jumpActionAvailable ? 'Resume narration from selected item' : 'Narration not available for selected item'"
+      :title="flowchartStore.jumpActionAvailable ? 'Narration von ausgewähltem Element aus fortsetzen' : 'Narration für ausgewähltes Element nicht verfügbar'"
       :tabindex="!flowchartStore.jumpActionAvailable ? -1 : ''"
       @click="$emit('jumpNarrationToNode', flowchartStore.currentNodeId)"
     />

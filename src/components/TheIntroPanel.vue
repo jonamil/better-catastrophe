@@ -2,7 +2,7 @@
   <PrimaryButton
     class="open"
     icon="info"
-    title="Open introduction"
+    title="Einleitung öffnen"
     :tabindex="viewStore.introPanelVisible ? -1 : ''"
     @click="$emit('toggleIntroPanel')"
   />
@@ -20,42 +20,53 @@
           </a>
         </div>
         <h1>I Want A Better Catastrophe</h1>
-        <h2>A flowchart for navigating our climate predicament</h2>
-        <p>Global warming is projected to rocket past the 1.5°C limit, throwing lifelong activist <a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> into a crisis of hope, and off on a quest to learn how to live with the “impossible news” of climate breakdown. With gallows humor and a broken heart, Andrew steers us through our climate angst as he walks his own. This chart (and <a href="https://bettercatastrophe.com/" target="_blank">the book</a> it originally appeared in) is an invitation to join him on his narrative path and explore our predicament on your own.</p>
+        <h2>Flowchart für einen Weg durch unser Klima-Dilemma</h2>
+        <p>Die Erderwärmung wird allen Vorhersagen nach weit an der 1,5°C-Grenze vorbeischießen. Gestürzt in eine Hoffnungskrise begibt sich der lebenslange Aktivist <a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a> auf die Suche nach Wegen, wie sich mit dem »unmöglichen« Ausblick des Klimazusammenbruchs leben lässt. Mit düsterem Humor und gebrochenem Herzen leitet uns Andrew durch unsere Ängste, während er seine eigenen verarbeitet. Dieses Flowchart (und <a href="https://bettercatastrophe.com/" target="_blank">das Buch</a>, in dem es ursprünglich erschien) ist eine Einladung, Andrew auf seinem Weg zu begleiten sowie unser kollektives Dilemma selbstständig zu erkunden.</p>
         <div class="instructions">
           <img src="@/assets/modes.svg" @click="$emit('togglePlayback')" />
           <div v-if="resetActionAvailable" class="reset">
-            <span>Want to re-explore from the beginning?</span>
-            <button @click="clearStorageKeyAndReload()">Reset progress and start over</button>
+            <span>Nochmal von Anfang an erkunden?</span>
+            <button @click="clearStorageKeyAndReload()">Zurücksetzen und neu starten</button>
           </div>
         </div>
-        <h3>How to Use</h3>
-        <p>Press the Play button below to start (and pause) Andrew’s explanations of the chart. You can also explore the chart yourself by selecting any visible items and moving along step by step. This experimental interface is an attempt to rethink the flowchart as a well-known genre of information design, integrating narration and interactivity.</p>
-        <h3>Background</h3>
-        <p>The original version of the flowchart is included as a printed foldout in Andrew’s new book <a href="https://bettercatastrophe.com/" target="_blank">“I Want a Better Catastrophe.”</a></p>
+        <h3>Bedienung</h3>
+        <p>Drücke am unteren Rand auf den Play-Button, um Andrews Erläuterungen des Flowcharts zu starten (oder zu pausieren). Du kannst das Chart auch selbst erkunden, indem du sichtbare Elemente anklickst und dich so Stück für Stück voran bewegst. Dieser experimentelle Bedienungsansatz verfolgt das Ziel, das Flowchart als verbreitetes Medium des Informationsdesigns neu zu denken, indem er Narration und Interaktivität integriert.</p>
+        <h3>Hintergrund</h3>
+        <p>Die originale, englische Version des Flowcharts ist als ausfaltbare Seite in Andrews neuem Buch <a href="https://bettercatastrophe.com/" target="_blank">»I Want a Better Catastrophe«</a> enthalten:</p>
         <a href="https://bettercatastrophe.com/" target="_blank">
           <img src="@/assets/book.png" />
         </a>
+        <h3>Deutsche Ausgabe</h3>
+        <p>Die Veröffentlichung einer deutschen Übersetzung wurde möglich gemacht durch das <a href="https://endspiel.website/" target="_blank">Projekt »Klima-Endspiel«</a>. Das interaktive Flowchart sowie ein begleitender Artikel von Andrew Boyd sind als Teil der Plattform und Publikation <a href="https://endspiel.website/" target="_blank">XYZ</a> erschienen.</p>
         <h3>Credits</h3>
         <p>
-          <strong><a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
-          <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
-          <strong><a href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
+          <strong><a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>
+          Buch und englisches Original-Flowchart
+          <strong><a href="https://molochronikhome.wordpress.com/" target="_blank">Alex »molosovsky«</a></strong>
+          Deutsche Übersetzung von Flowchart und Audio‑Narration
+          <strong><a href="https://zeit.de/autoren/F/Moses_Fendel/index" target="_blank">Moses Fendel</a></strong>
+          Stimme der deutschen Audio-Narration
+          <strong><a href="https://endspiel.website/" target="_blank">Projekt »Klima-Endspiel«</a></strong>
+          Herausgeberschaft der deutschen Ausgabe
+          <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>
+          Gestaltung, Prototyping und Entwicklung des interaktiven Flowcharts
+          <strong><a href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>
+          Forschungsbegleitung
         </p>
         <h3>Template</h3>
-        <p>The project is powered by the <a href="https://uclab.fh-potsdam.de/interactive-flowchart/" target="_blank">Interactive Flowchart</a> template, which can be used to add interactivity and audio narration to other flowcharts.</p>
+        <p>Dieses Projekt basiert auf dem <a href="https://uclab.fh-potsdam.de/interactive-flowchart/" target="_blank">Interactive-Flowchart</a>-Template, mit dem Interaktivität und Audio-Narration auch zu anderen Flowcharts hinzugefügt werden können.</p>
         <div class="logos">
-          <a href="https://www.fh-potsdam.de/en/" target="_blank"><img src="@/assets/fhp.svg" /></a>
+          <a href="https://www.fh-potsdam.de/" target="_blank"><img src="@/assets/fhp.svg" /></a>
           <a href="https://uclab.fh-potsdam.de/" target="_blank"><img src="@/assets/uclab.svg" /></a>
         </div>
         <p>
-          <a href="mailto:andrew@bettercatastrophe.com,hello@jona.im,marian.doerk@fh-potsdam.de?subject=I%20Want%20a%20Better%20Catastrophe%20Flowchart">Contact</a> &nbsp;·&nbsp;
-          <a href="https://www.fh-potsdam.de/impressum" target="_blank">Imprint</a> &nbsp;·&nbsp;
-          <a href="https://www.fh-potsdam.de/en/privacy" target="_blank">Privacy</a>
+          <a href="mailto:endspiel@meteo.uni-hannover.de,hello@jona.im,marian.doerk@fh-potsdam.de?subject=I%20Want%20a%20Better%20Catastrophe%20Flowchart">Kontakt</a> &nbsp;·&nbsp;
+          <a href="https://www.fh-potsdam.de/impressum" target="_blank">Impressum</a> &nbsp;·&nbsp;
+          <a href="https://www.fh-potsdam.de/datenschutz" target="_blank">Datenschutz</a>
         </p>
       </div>
     </div>
-    <button class="close" title="Close introduction" @click="$emit('toggleIntroPanel')"></button>
+    <button class="close" title="Einleitung schließen" @click="$emit('toggleIntroPanel')"></button>
   </div>
 </template>
 

@@ -58,13 +58,13 @@ export default {
     },
     buttonTitle() {
       if (this.flowchartStore.mediaBuffering) {
-        return 'Narration audio loading…';
+        return 'Narrations-Audio lädt…';
       } else if (!this.flowchartStore.playbackActive) {
-        return 'Resume narration playback';
+        return 'Wiedergabe fortsetzen';
       } else if (this.flowchartStore.exploringDuringPlayback) {
-        return 'Return to playback location';
+        return 'Zum Wiedergabeort zurückkehren';
       } else {
-        return 'Pause narration playback';
+        return 'Wiedergabe pausieren';
       }
     }
   }

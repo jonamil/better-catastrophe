@@ -300,7 +300,7 @@ export default {
             // display hint alert upon third click attempt
             vueInstance.teasedClickAttempts++;
             if (vueInstance.teasedClickAttempts === 3) {
-              alert('In order to reveal this item of the flowchart, please select any item pointing here first.');
+              alert('Wähle zuerst ein Objekt aus, was hierher zeigt, um dieses Element sichtbar zu machen.');
             }
           }
         });
