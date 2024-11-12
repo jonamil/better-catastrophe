@@ -3,6 +3,6 @@ import { defineStore } from 'pinia';
 export const useViewStore = defineStore('view', {
   state: () => ({
     chapterListVisible: false,
-    introPanelVisible: true
+    introPanelVisible: window.location.search !== '?nointro'
   })
 });
