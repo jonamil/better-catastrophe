@@ -161,16 +161,16 @@ button.open {
   &.visible {
     width: var(--panel-width);
 
-    &:after {
-      opacity: 1;
-    }
+    // &:after {
+    //   opacity: 1;
+    // }
 
     .inner > *, .inner .instructions *:not(.reset) {
       opacity: 1;
     }
   }
 
-  &:before, &:after {
+  &:before/*, &:after*/ {
     position: absolute;
     display: block;
     content: '';
@@ -182,21 +182,24 @@ button.open {
   &:before {
     z-index: 1;
     bottom: 0;
-    height: var(--panel-width);
-    background: linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%), linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%);
+    height: 224px;
+    background:
+      linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%),
+      linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%),
+      linear-gradient(180deg, transparent 0%, var(--intro-background-color) 100%);
   }
 
-  &:after {
-    z-index: 2;
-    opacity: 0;
-    bottom: 80px;
-    height: 340px;
-    background-size: var(--panel-width);
-    background-position: center bottom;
-    background-repeat: no-repeat;
-    background-image: url('@/assets/tentacles.png');
-    transition: opacity var(--transition-duration-long) var(--transition-timing);
-  }
+  // &:after {
+  //   z-index: 2;
+  //   opacity: 0;
+  //   bottom: 80px;
+  //   height: 340px;
+  //   background-size: var(--panel-width);
+  //   background-position: center bottom;
+  //   background-repeat: no-repeat;
+  //   background-image: url('@/assets/tentacles.png');
+  //   transition: opacity var(--transition-duration-long) var(--transition-timing);
+  // }
 
   *::selection {
     color: #fff;
@@ -215,7 +218,7 @@ button.open {
   .inner {
     position: relative;
     width: var(--panel-width);
-    padding: 16px 28px var(--panel-width);
+    padding: 16px 28px 224px;
     box-sizing: border-box;
 
     > *, .instructions *:not(.reset) {
@@ -453,17 +456,17 @@ button.open {
   }
 }
 
-@media (max-height: 650px) {
-  .intro:before {
-    height: 33vh;
-  }
+// @media (max-height: 650px) {
+//   .intro:before {
+//     height: 33vh;
+//   }
   
-  .intro:after {
-    display: none;
-  }
+//   .intro:after {
+//     display: none;
+//   }
 
-  .intro .inner {
-    padding-bottom: 33vh;
-  }
-}
+//   .intro .inner {
+//     padding-bottom: 33vh;
+//   }
+// }
 </style>
