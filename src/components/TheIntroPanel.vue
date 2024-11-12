@@ -296,7 +296,7 @@ button.open {
     font-size: 15px;
     font-weight: 600;
     line-height: 1.05;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.025em;
     text-transform: uppercase;
   }
 
@@ -308,7 +308,7 @@ button.open {
 
     strong {
       display: block;
-      margin: 6px 0 0;
+      margin: 8px 0 0;
     }
   }
 
