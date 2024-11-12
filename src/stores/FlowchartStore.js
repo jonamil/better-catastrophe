@@ -5,7 +5,7 @@ import narrationTimestamps from '@/data/timestamps.json';
 export const useFlowchartStore = defineStore('flowchart', {
   state: () => ({
     // language
-    flowchartLanguage: 'en',
+    flowchartLanguage: 'de',
 
     // nodes and their state
     flowchartNodes: {},
