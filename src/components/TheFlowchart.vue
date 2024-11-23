@@ -230,7 +230,9 @@ export default {
 
       this.collectNarrationChapters();
       this.addNodeInteractivity();
-      this.moveToNode(this.flowchartStore.currentNode);
+
+      // jump to first node instantly (without transition) if intro panel is initially hidden through URL parameter
+      this.moveToNode(this.flowchartStore.currentNode, true, window.location.search === '?nointro');
     },
 
     // populate flowchartStore’s narrationChapters array with non-label nodes
@@ -308,7 +310,7 @@ export default {
     },
 
     // scroll the flowchart to center on an item
-    moveToNode(item, forceMovement = false) {
+    moveToNode(item, forceMovement = false, omitTransition = false) {
       const itemPosition = item.element.getBBox();
       const destinationCoords = {
         x: (itemPosition.x + itemPosition.width / 2) * this.zoomScale - (
@@ -330,7 +332,7 @@ export default {
 
       // omit movement if playback is active and distance from viewport center to destination node falls below threshold
       if (forceMovement || !this.flowchartStore.playbackActive || travelDistance > this.travelThreshold) {
-        const duration = Math.min(
+        const duration = omitTransition ? 0 : Math.min(
           Math.max(
             travelDistance * this.transitionParameters.distanceFactor,
             this.transitionParameters.minDuration
