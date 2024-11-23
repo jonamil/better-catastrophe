@@ -39,7 +39,7 @@
         <h3>Credits</h3>
         <p>
           <strong><a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>Book and original flowchart<br />
-          <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Ideation, design and development<br />
+          <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>Design, prototyping and development<br />
           <strong><a href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>Research supervision
         </p>
         <h3>Template</h3>
