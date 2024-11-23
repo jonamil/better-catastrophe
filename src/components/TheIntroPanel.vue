@@ -37,7 +37,7 @@
           <img src="@/assets/book.png" />
         </a>
         <h3>Deutsche Ausgabe</h3>
-        <p>Die Veröffentlichung einer deutschen Übersetzung wurde möglich gemacht durch das <a href="https://endspiel.website/" target="_blank">Projekt »Klima-Endspiel«</a>. Das interaktive Flowchart sowie ein begleitender Artikel von Andrew Boyd sind als Teil der Plattform und Publikation <a href="https://endspiel.website/" target="_blank">XYZ</a> erschienen.</p>
+        <p>Die Veröffentlichung einer deutschen Version wurde ermöglicht durch ein transdisziplinäres Forschungsprojekt der Universität und Hochschule Hannover zu Klimakommunikation. Das interaktive Flowchart und ein Essay von Andrew Boyd sind erstmals in der Publikation <a href="https://klima-kollaps-kommunikation.de/" target="_blank">»Klima, Kollaps, Kommunikation: Perspektiven auf das Climate Endgame«</a> erschienen.</p>
         <h3>Credits</h3>
         <p>
           <strong><a href="https://bettercatastrophe.com/" target="_blank">Andrew Boyd</a></strong>
@@ -46,8 +46,8 @@
           Deutsche Übersetzung von Flowchart und Audio‑Narration
           <strong><a href="https://zeit.de/autoren/F/Moses_Fendel/index" target="_blank">Moses Fendel</a></strong>
           Stimme der deutschen Audio-Narration
-          <strong><a href="https://endspiel.website/" target="_blank">Projekt »Klima-Endspiel«</a></strong>
-          Herausgeberschaft der deutschen Ausgabe
+          <strong><a href="https://klima-kollaps-kommunikation.de/autor-innen/theresa-leisgang" target="_blank">Theresa Leisgang</a> & <a href="https://klima-kollaps-kommunikation.de/autor-innen/gerriet-schwen" target="_blank">Gerriet Schwen</a></strong>
+          Redaktion und Herausgeber*innen der deutschen Version
           <strong><a href="https://jona.im/" target="_blank">Jona Pomerance</a></strong>
           Gestaltung, Prototyping und Entwicklung des interaktiven Flowcharts
           <strong><a href="https://mariandoerk.de/" target="_blank">Marian Dörk</a></strong>
